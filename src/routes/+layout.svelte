@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { Toaster } from "$lib/components/ui/sonner";
+
     import "../app.css";
     import favicon from "$lib/assets/favicon.svg";
     import { ModeWatcher } from "mode-watcher";
@@ -85,6 +87,7 @@
     <link rel="icon" href={favicon} />
 </svelte:head>
 <ModeWatcher />
+<Toaster />
 
 <div class="min-h-screen">
     <header class="border-b">
