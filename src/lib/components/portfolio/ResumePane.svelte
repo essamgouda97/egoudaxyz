@@ -1,11 +1,9 @@
 <script lang="ts">
     import * as Avatar from "$lib/components/ui/avatar";
     import { Button } from "$lib/components/ui/button";
+    import { Badge } from "$lib/components/ui/badge";
     import { toast } from "svelte-sonner";
     import * as Accordion from "$lib/components/ui/accordion";
-    import { jsPDF } from "jspdf";
-    import html2canvas from "html2canvas-pro";
-
     /**
      * ResumePane
      * - Scrollable container to house your resume-related components.
@@ -20,86 +18,35 @@
     const yearsOfExperience = currentYear - 2019;
 
     async function exportToPDF() {
-        const element = document.querySelector('[aria-label="Resume"]');
-        if (!element) return;
+        try {
+            toast("Generating PDF...");
+            
+            const response = await fetch("/api/export-resume", {
+                method: "POST",
+            });
 
-        // Clone the element for manipulation
-        const clone = element.cloneNode(true) as HTMLElement;
-
-        // Apply dark theme
-        clone.style.backgroundColor = "#0a0a0a";
-        clone.style.color = "#ffffff";
-
-        // Replace buttons with text links
-        const buttons = clone.querySelectorAll("button");
-        buttons.forEach((button) => {
-            if (button.textContent?.includes("Export PDF")) {
-                // Remove the export button entirely
-                button.remove();
-            } else {
-                // Replace other buttons with text links
-                const text = button.textContent || "";
-                const href = button.getAttribute("href") || "";
-                const link = document.createElement("a");
-                link.textContent = text;
-                link.style.color = "#60a5fa";
-                link.style.textDecoration = "underline";
-                if (href) {
-                    link.setAttribute("href", href);
-                }
-                button.parentNode?.replaceChild(link, button);
+            if (!response.ok) {
+                throw new Error("Failed to generate PDF");
             }
-        });
 
-        // Adjust text colors for dark theme
-        const textElements = clone.querySelectorAll(".text-muted-foreground");
-        textElements.forEach((el) => {
-            (el as HTMLElement).style.color = "#d1d5db";
-        });
+            // Get the PDF blob
+            const blob = await response.blob();
 
-        // Make headings white
-        const headings = clone.querySelectorAll("h1, h2, h3, h4, h5, h6");
-        headings.forEach((heading) => {
-            (heading as HTMLElement).style.color = "#ffffff";
-        });
+            // Create a download link
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "Essam_Gouda_Resume.pdf";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
 
-        // Temporarily add to document for capture
-        clone.style.position = "absolute";
-        clone.style.left = "-9999px";
-        clone.style.top = "0";
-        document.body.appendChild(clone);
-
-        const canvas = await html2canvas(clone, {
-            scale: 2,
-            useCORS: true,
-            allowTaint: true,
-            backgroundColor: "#0a0a0a",
-        });
-
-        // Clean up
-        document.body.removeChild(clone);
-
-        const imgData = canvas.toDataURL("image/png");
-        const pdf = new jsPDF("p", "mm", "a4");
-
-        const imgWidth = 210;
-        const pageHeight = 295;
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
-        let heightLeft = imgHeight;
-        let position = 0;
-
-        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-
-        while (heightLeft >= 0) {
-            position = heightLeft - imgHeight;
-            pdf.addPage();
-            pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-            heightLeft -= pageHeight;
+            toast("PDF exported successfully!");
+        } catch (error) {
+            console.error("PDF export error:", error);
+            toast("Failed to export PDF. Please try again.");
         }
-
-        pdf.save("Essam_Gouda_Resume.pdf");
-        toast("PDF exported successfully!");
     }
 </script>
 
@@ -244,30 +191,31 @@
                                 March 2025 - Present
                             </p>
                             <p class="text-xs text-muted-foreground">
-                                Toronto, ON, CA
+                                St. John, NL, CA
                             </p>
                         </div>
                     </div>
                 </Accordion.Trigger>
                 <Accordion.Content>
-                    <div class="space-y-2 py-4">
+                    <div class="space-y-4 py-4">
                         <ul
-                            class="list-disc space-y-1 pl-6 text-muted-foreground"
+                            class="list-disc space-y-2 pl-6 text-muted-foreground"
                         >
                             <li>
-                                Worked with agentic workflows using <b
-                                    >Pydantic AI</b
-                                >.
+                                Built agentic workflows using Pydantic AI for
+                                automated tasks
                             </li>
                             <li>
-                                Implemented vector database solutions for
-                                similarity search.
-                            </li>
-                            <li>
-                                Developed 3D/2D models similarity and review
-                                systems.
+                                Designed evaluation pipelines for 3D/2D model
+                                similarity and retrieval using OpenSearch vector
+                                database
                             </li>
                         </ul>
+                        <div class="flex flex-wrap gap-2">
+                            <Badge variant="secondary">Pydantic AI</Badge>
+                            <Badge variant="secondary">OpenSearch</Badge>
+                            <Badge variant="secondary">Vector DB</Badge>
+                        </div>
                     </div>
                 </Accordion.Content>
             </Accordion.Item>
@@ -293,62 +241,66 @@
                     </div>
                 </Accordion.Trigger>
                 <Accordion.Content>
-                    <div class="space-y-2 py-4">
+                    <div class="space-y-4 py-4">
                         <ul
-                            class="list-disc space-y-1 pl-6 text-muted-foreground"
+                            class="list-disc space-y-2 pl-6 text-muted-foreground"
                         >
                             <li>
-                                Profiled & Optimized code blocks using <b
-                                    >Rust</b
-                                > achieving 40x speedup and memory optimizations.
+                                Achieved 40x performance improvement through
+                                Rust code optimization
                             </li>
                             <li>
-                                Implemented <b>Argo workflows</b> for
-                                <b>GenAI</b> pipelines, improving the feedback loop
-                                and adding more revenue streams.
+                                Built Argo workflows for GenAI pipelines,
+                                accelerating feedback loops and enabling new
+                                revenue streams
                             </li>
                             <li>
-                                Contributed to core <b>ML</b> code with
-                                <b>PyTorch</b>
-                                and <b>Pandas</b>.
+                                Developed core ML features with PyTorch and
+                                Pandas
                             </li>
                             <li>
-                                Supported the launch of the first product,
-                                increasing artist efficiency by 90%.
+                                Launched first product, boosting artist
+                                efficiency by 90%
                             </li>
                             <li>
-                                Compile & analyze <b>PyTorch</b> and
-                                <b>Tensorflow</b>
-                                models for optimized inference on <b>Triton</b>.
+                                Optimized PyTorch and TensorFlow models for
+                                Triton inference
                             </li>
                             <li>
-                                Increased production facing the coverage of the
-                                code test from 40% to 85%+ using <b>Pytest</b>.
+                                Increased test coverage from 40% to 85%+ with
+                                Pytest
                             </li>
                             <li>
-                                Developed GPU and non-GPU tests; created
-                                company-wide composite <b>GitHub Actions</b>.
+                                Created GPU/non-GPU testing framework and GitHub
+                                Actions pipelines
                             </li>
                             <li>
-                                Managed dual <b>Kubernetes</b> and
-                                <b>Docker Compose</b>
-                                environments, on-prem and in the cloud
-                                <b>(AWS, Azure, GCP)</b>.
+                                Managed Kubernetes and Docker Compose
+                                environments across AWS, Azure, and GCP
                             </li>
                             <li>
-                                Creating ML related services in our <b
-                                    >FastAPI/PostgreSQL</b
-                                >
-                                backend, I have also helped develop the backend the
-                                business logic using <b>Flask</b>.
-                            </li>
-                            <li>
-                                <b>Tech stack:</b> Argo workflows, FastAPI, PyTorch,
-                                MongoDB, Postgres, Triton, Kubernetes, Airflow, AWS,
-                                GCP, Azure, Pandas, Django, Docker, Docker compose,
-                                Github Actions, Tensorflow, Helm, FFMPEG, Rust
+                                Developed ML services using FastAPI, Flask,
+                                PostgreSQL, and MongoDB
                             </li>
                         </ul>
+                        <div class="flex flex-wrap gap-2">
+                            <Badge variant="secondary">Rust</Badge>
+                            <Badge variant="secondary">Argo Workflows</Badge>
+                            <Badge variant="secondary">PyTorch</Badge>
+                            <Badge variant="secondary">TensorFlow</Badge>
+                            <Badge variant="secondary">Triton</Badge>
+                            <Badge variant="secondary">FastAPI</Badge>
+                            <Badge variant="secondary">Kubernetes</Badge>
+                            <Badge variant="secondary">Docker</Badge>
+                            <Badge variant="secondary">AWS</Badge>
+                            <Badge variant="secondary">Azure</Badge>
+                            <Badge variant="secondary">GCP</Badge>
+                            <Badge variant="secondary">Pytest</Badge>
+                            <Badge variant="secondary">GitHub Actions</Badge>
+                            <Badge variant="secondary">PostgreSQL</Badge>
+                            <Badge variant="secondary">MongoDB</Badge>
+                            <Badge variant="secondary">Pandas</Badge>
+                        </div>
                     </div>
                 </Accordion.Content>
             </Accordion.Item>
@@ -376,23 +328,32 @@
                     </div>
                 </Accordion.Trigger>
                 <Accordion.Content>
-                    <div class="space-y-2 py-4">
+                    <div class="space-y-4 py-4">
                         <ul
-                            class="list-disc space-y-1 pl-6 text-muted-foreground"
+                            class="list-disc space-y-2 pl-6 text-muted-foreground"
                         >
                             <li>
-                                Trained and tested audio/video <b>ViT</b> based
-                                classification model with ≈ 96% accuracy using
-                                <b>PyTorch</b>, optimized using <b>TensorRT</b>
-                                for inference and running a <b>docker</b>
-                                container on a <b>Jetson Nano</b> board.
+                                Developed ViT-based audio/video classification
+                                model (96% accuracy) with PyTorch
                             </li>
                             <li>
-                                Deploying <b>MongoDB</b> server and
-                                <b>RESTful API</b> to allow seamless user control
-                                on the deployed hardware.
+                                Optimized inference with TensorRT and deployed
+                                on Jetson Nano using Docker
+                            </li>
+                            <li>
+                                Built MongoDB server with RESTful API for
+                                hardware control
                             </li>
                         </ul>
+                        <div class="flex flex-wrap gap-2">
+                            <Badge variant="secondary">ViT</Badge>
+                            <Badge variant="secondary">PyTorch</Badge>
+                            <Badge variant="secondary">TensorRT</Badge>
+                            <Badge variant="secondary">Docker</Badge>
+                            <Badge variant="secondary">Jetson Nano</Badge>
+                            <Badge variant="secondary">MongoDB</Badge>
+                            <Badge variant="secondary">RESTful API</Badge>
+                        </div>
                     </div>
                 </Accordion.Content>
             </Accordion.Item>
@@ -411,22 +372,28 @@
                         </div>
                         <div class="text-right">
                             <p class="text-sm text-muted-foreground">
-                                September 2019 - September 2020
+                                Sept 2019 - Sept 2020
+                            </p>
+                            <p class="text-xs text-muted-foreground">
+                                Calgary, AB, CA
                             </p>
                         </div>
                     </div>
                 </Accordion.Trigger>
                 <Accordion.Content>
-                    <div class="space-y-2 py-4">
+                    <div class="space-y-4 py-4">
                         <ul
-                            class="list-disc space-y-1 pl-6 text-muted-foreground"
+                            class="list-disc space-y-2 pl-6 text-muted-foreground"
                         >
                             <li>
-                                Managing the hardware/software of a 360
-                                synchronized video and audio capturing device
-                                with a latency ≤ 10ms.
+                                Managed hardware/software for 360° synchronized
+                                video/audio capture system with ≤10ms latency
                             </li>
                         </ul>
+                        <div class="flex flex-wrap gap-2">
+                            <Badge variant="secondary">Embedded Systems</Badge>
+                            <Badge variant="secondary">Real-time Systems</Badge>
+                        </div>
                     </div>
                 </Accordion.Content>
             </Accordion.Item>
@@ -445,7 +412,7 @@
                         </div>
                         <div class="text-right">
                             <p class="text-sm text-muted-foreground">
-                                September 2017 - December 2017
+                                Sept 2017 - Dec 2017
                             </p>
                             <p class="text-xs text-muted-foreground">
                                 Semenyih, MY
@@ -454,19 +421,24 @@
                     </div>
                 </Accordion.Trigger>
                 <Accordion.Content>
-                    <div class="space-y-2 py-4">
+                    <div class="space-y-4 py-4">
                         <ul
-                            class="list-disc space-y-1 pl-6 text-muted-foreground"
+                            class="list-disc space-y-2 pl-6 text-muted-foreground"
                         >
                             <li>
-                                PID controller for autonomous car braking
-                                system.
+                                Designed PID controller for autonomous car
+                                braking system
                             </li>
                             <li>
-                                Working with LoRa module to create low power
-                                people counter.
+                                Developed low-power people counter using LoRa
+                                modules
                             </li>
                         </ul>
+                        <div class="flex flex-wrap gap-2">
+                            <Badge variant="secondary">PID Control</Badge>
+                            <Badge variant="secondary">LoRa</Badge>
+                            <Badge variant="secondary">Embedded Systems</Badge>
+                        </div>
                     </div>
                 </Accordion.Content>
             </Accordion.Item>
@@ -485,7 +457,8 @@
                         rel="noreferrer"
                         class="text-primary font-medium underline underline-offset-4"
                     >
-                        International Journal of Interactive Mobile Technologies
+                        BIM-VR Framework for Building Information Modelling in
+                        Engineering Education
                     </a>
                 </p>
             </div>
