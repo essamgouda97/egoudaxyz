@@ -24,14 +24,14 @@
             title: "Dispatcher Agent",
             description:
                 "Creating a truck dispatcher agentic workflow for truck companies.",
-            status: "in-progress",
+            status: "in-progress" as const,
             year: 2026,
         },
         {
             title: "Hala Qeshta Franchise",
             description:
                 "Tried opening Hala Qeshta franchise in Montreal for egyptian desserts.",
-            status: "failed",
+            status: "failed" as const,
             year: 2025,
             links: [
                 { label: "Company Site", url: "https://www.ewanagroup.com/" },
@@ -45,7 +45,7 @@
             title: "Santagrams.ai",
             description:
                 "Created an AI powered text to video santagram message generator for christmas while doing a tiktok marketing campaign.",
-            status: "failed",
+            status: "failed" as const,
             year: 2025,
             links: [{ label: "Site Link", url: "https://www.santagrams.ai/" }],
         },
@@ -81,36 +81,11 @@
                         <Carousel.Item class="pt-4 md:basis-1/2 lg:basis-1/3">
                             <div class="rounded-lg border p-6">
                                 <div
-                                    class="flex items-start justify-between gap-4"
+                                    class="mb-2 flex items-start justify-between gap-4"
                                 >
-                                    <div class="flex-1">
-                                        <div class="flex items-center gap-3">
-                                            <h3 class="text-xl font-semibold">
-                                                {project.title}
-                                            </h3>
-                                            <span
-                                                class="text-sm font-medium text-muted-foreground"
-                                                >{project.year}</span
-                                            >
-                                        </div>
-                                        <p
-                                            class="mt-2 text-sm text-muted-foreground"
-                                        >
-                                            {project.description}
-                                        </p>
-                                        {#if project.links}
-                                            <div class="mt-3 flex gap-2">
-                                                {#each project.links as link}
-                                                    <a
-                                                        href={link.url}
-                                                        class="text-sm text-primary hover:underline"
-                                                    >
-                                                        {link.label}
-                                                    </a>
-                                                {/each}
-                                            </div>
-                                        {/if}
-                                    </div>
+                                    <h3 class="text-xl font-semibold">
+                                        {project.title}
+                                    </h3>
                                     <div class="flex items-center gap-2">
                                         <span
                                             class={`h-3 w-3 rounded-full ${statusColors[project.status]}`}
@@ -119,6 +94,27 @@
                                             >{project.status}</span
                                         >
                                     </div>
+                                </div>
+                                <span
+                                    class="mb-3 block text-2xl font-light text-muted-foreground"
+                                    >{project.year}</span
+                                >
+                                <div>
+                                    <p class="text-sm text-muted-foreground">
+                                        {project.description}
+                                    </p>
+                                    {#if project.links}
+                                        <div class="mt-3 flex gap-2">
+                                            {#each project.links as link}
+                                                <a
+                                                    href={link.url}
+                                                    class="text-sm text-primary hover:underline"
+                                                >
+                                                    {link.label}
+                                                </a>
+                                            {/each}
+                                        </div>
+                                    {/if}
                                 </div>
                             </div>
                         </Carousel.Item>

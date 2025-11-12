@@ -20,7 +20,7 @@
     async function exportToPDF() {
         try {
             toast("Generating PDF...");
-            
+
             const response = await fetch("/api/export-resume", {
                 method: "POST",
             });
@@ -172,7 +172,7 @@
         >
             Work Experience
         </h3>
-        <Accordion.Root class="w-full">
+        <Accordion.Root type="multiple" class="w-full">
             <Accordion.Item value="colab">
                 <Accordion.Trigger>
                     <div
