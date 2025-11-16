@@ -1,5 +1,10 @@
 <script lang="ts">
     import { Toaster } from "$lib/components/ui/sonner";
+    import { createSvelteAuthClient } from "@mmailaender/convex-better-auth-svelte/svelte";
+    import { authClient } from "$lib/auth-client";
+    import { PUBLIC_CONVEX_URL } from "$env/static/public";
+    import { onMount } from "svelte";
+    import { browser } from "$app/environment";
 
     import "../app.css";
     import favicon from "$lib/assets/favicon.svg";
@@ -8,6 +13,11 @@
     import { navigationMenuTriggerStyle } from "$lib/components/ui/navigation-menu/navigation-menu-trigger.svelte";
     import { cn } from "$lib/utils.js";
     import type { HTMLAttributes } from "svelte/elements";
+
+    // Only initialize auth client on the browser
+    if (browser) {
+        createSvelteAuthClient({ authClient, convexUrl: PUBLIC_CONVEX_URL });
+    }
 
     let { children } = $props();
 
@@ -98,7 +108,7 @@
                         <NavigationMenu.Link>
                             {#snippet child()}
                                 <a
-                                    href="/"
+                                    href="/dashboard"
                                     data-sveltekit-preload-data="hover"
                                     class={navigationMenuTriggerStyle()}
                                 >
@@ -112,7 +122,7 @@
                         <NavigationMenu.Link>
                             {#snippet child()}
                                 <a
-                                    href="/portfolio"
+                                    href="/"
                                     data-sveltekit-preload-data="hover"
                                     class={navigationMenuTriggerStyle()}
                                 >
