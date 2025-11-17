@@ -1,13 +1,11 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import puppeteer from 'puppeteer';
+import puppeteer from '@cloudflare/puppeteer';
 
-export const POST: RequestHandler = async ({ request, url }) => {
+export const POST: RequestHandler = async ({ request, url, platform }) => {
 	try {
-		const browser = await puppeteer.launch({
-			headless: true,
-			args: ['--no-sandbox', '--disable-setuid-sandbox']
-		});
+		// Get the browser binding from Cloudflare
+		const browser = await puppeteer.launch(platform?.env?.BROWSER);
 
 		const page = await browser.newPage();
 
