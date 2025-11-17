@@ -1,11 +1,25 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import puppeteer from '@cloudflare/puppeteer';
+import { dev } from '$app/environment';
 
 export const POST: RequestHandler = async ({ request, url, platform }) => {
 	try {
-		// Get the browser binding from Cloudflare
-		const browser = await puppeteer.launch(platform?.env?.BROWSER);
+		let browser;
+
+		if (dev) {
+			// Local development: use regular puppeteer
+			console.log('Running in dev mode - PDF export disabled in local dev');
+			return json({ error: 'PDF export only works in production with Cloudflare Browser Rendering' }, { status: 501 });
+		} else {
+			// Production: use Cloudflare Browser Rendering
+			if (!platform?.env?.BROWSER) {
+				console.error('Browser binding not available:', { platform: !!platform, env: !!platform?.env });
+				return json({ error: 'Browser rendering not configured. Please add Browser Rendering binding in Cloudflare Pages.' }, { status: 500 });
+			}
+
+			const puppeteer = await import('@cloudflare/puppeteer');
+			browser = await puppeteer.default.launch(platform.env.BROWSER);
+		}
 
 		const page = await browser.newPage();
 
