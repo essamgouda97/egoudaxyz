@@ -2,10 +2,5 @@ name = "egoudaxyz"
 compatibility_date = "2025-11-16"
 pages_build_output_dir = ".svelte-kit/cloudflare"
 
-[env.production]
-routes = [
-  { pattern = "/*", zone_name = "egouda.xyz" }
-]
-
 [browser]
 binding = "BROWSER"
