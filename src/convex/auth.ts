@@ -14,7 +14,12 @@ export const createAuth = (ctx: any, { optionsOnly } = { optionsOnly: false }) =
       disabled: optionsOnly,
     },
     baseURL,
-    trustedOrigins: [process.env.SITE_URL!, baseURL],
+    trustedOrigins: [
+      process.env.SITE_URL!,
+      baseURL,
+      "https://egouda.xyz",
+      "http://localhost:5173"
+    ],
     database: authComponent.adapter(ctx),
     socialProviders: {
       github: {
