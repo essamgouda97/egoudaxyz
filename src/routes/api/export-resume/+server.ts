@@ -17,11 +17,15 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 				return json({ error: 'Browser rendering not configured. Please add Browser Rendering binding in Cloudflare Pages.' }, { status: 500 });
 			}
 
-			const puppeteer = await import('@cloudflare/puppeteer');
-			// Pass the binding directly as the first argument
-			browser = await puppeteer.default.launch({
-				env: platform.env
+			console.log('Browser binding info:', {
+				type: typeof platform.env.BROWSER,
+				hasFetch: typeof platform.env.BROWSER?.fetch,
+				keys: Object.keys(platform.env.BROWSER || {})
 			});
+
+			const puppeteer = await import('@cloudflare/puppeteer');
+			// Pass the BROWSER binding directly
+			browser = await puppeteer.default.launch(platform.env.BROWSER);
 		}
 
 		const page = await browser.newPage();
