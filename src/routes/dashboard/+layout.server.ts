@@ -1,16 +1,35 @@
 import { redirect, error } from "@sveltejs/kit";
 import type { LayoutServerLoad } from "./$types";
+import { ConvexHttpClient } from "convex/browser";
+import { PUBLIC_CONVEX_URL } from "$env/static/public";
+import { api } from "$convex/_generated/api";
 
-export const load: LayoutServerLoad = async ({ locals, platform }) => {
+export const load: LayoutServerLoad = async ({ locals }) => {
   if (!locals.token) {
     throw redirect(307, "/login");
   }
 
-  // Check if user's email matches ADMIN_EMAIL
-  const adminEmail = platform?.env?.ADMIN_EMAIL;
-  const userEmail = locals.token.email;
+  // Get admin email from Convex
+  const convex = new ConvexHttpClient(PUBLIC_CONVEX_URL);
+  const adminEmail = await convex.query(api.config.getAdminEmail);
 
-  if (!adminEmail || userEmail !== adminEmail) {
+  if (!adminEmail) {
+    throw error(500, "ADMIN_EMAIL not configured in Convex");
+  }
+
+  let userEmail = null;
+  if (typeof locals.token === 'string') {
+    try {
+      const payload = JSON.parse(atob(locals.token.split('.')[1]));
+      userEmail = payload.email || payload.user?.email;
+    } catch (e) {
+      // Not a JWT
+    }
+  } else if (typeof locals.token === 'object') {
+    userEmail = (locals.token as any).email || (locals.token as any).user?.email;
+  }
+
+  if (!userEmail || userEmail !== adminEmail) {
     throw error(403, "Unauthorized: Admin access only");
   }
 

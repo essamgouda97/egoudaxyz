@@ -1,9 +1,11 @@
 <script lang="ts">
   import { authClient } from "$lib/auth-client";
   import { Card, CardContent, CardHeader, CardTitle } from "$lib/components/ui/card";
+  import Spinner from "$lib/components/ui/spinner/spinner.svelte";
   import { onMount } from "svelte";
 
   let isReady = $state(false);
+  let isSigningIn = $state(false);
 
   onMount(() => {
     // Wait for auth client to be initialized
@@ -15,7 +17,7 @@
   async function handleGitHubSignIn(event: MouseEvent) {
     event.preventDefault();
     event.stopPropagation();
-    console.log("Sign in button clicked");
+    isSigningIn = true;
     
     try {
       const result = await authClient.signIn.social({
@@ -25,6 +27,7 @@
       console.log("Sign in result:", result);
     } catch (error) {
       console.error("Sign in error:", error);
+      isSigningIn = false;
     }
   }
 </script>
@@ -38,10 +41,17 @@
       <button 
         type="button"
         onclick={handleGitHubSignIn} 
-        disabled={!isReady}
-        class="w-full rounded-md bg-primary px-4 py-2 text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+        disabled={!isReady || isSigningIn}
+        class="w-full rounded-md bg-primary px-4 py-2 text-primary-foreground hover:bg-primary/90 disabled:opacity-50 flex items-center justify-center gap-2"
       >
-        {isReady ? "Sign In with GitHub" : "Loading..."}
+        {#if isSigningIn}
+          <Spinner />
+          Signing in...
+        {:else if isReady}
+          Sign In with GitHub
+        {:else}
+          Loading...
+        {/if}
       </button>
     </CardContent>
   </Card>
