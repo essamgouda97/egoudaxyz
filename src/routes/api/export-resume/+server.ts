@@ -18,7 +18,10 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 			}
 
 			const puppeteer = await import('@cloudflare/puppeteer');
-			browser = await puppeteer.default.launch(platform.env.BROWSER);
+			// Pass the binding directly as the first argument
+			browser = await puppeteer.default.launch({
+				env: platform.env
+			});
 		}
 
 		const page = await browser.newPage();
