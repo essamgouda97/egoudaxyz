@@ -3,5 +3,7 @@ compatibility_date = "2025-11-16"
 compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = ".svelte-kit/cloudflare"
 
+# Set ADMIN_EMAIL as an environment variable in Cloudflare Pages dashboard
+
 [browser]
 binding = "BROWSER"
