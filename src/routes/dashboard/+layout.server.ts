@@ -1,20 +1,16 @@
 import { redirect, error } from "@sveltejs/kit";
 import type { LayoutServerLoad } from "./$types";
-import { ConvexHttpClient } from "convex/browser";
-import { PUBLIC_CONVEX_URL } from "$env/static/public";
-import { api } from "$convex/_generated/api";
+import { env } from "$env/dynamic/private";
 
 export const load: LayoutServerLoad = async ({ locals }) => {
   if (!locals.token) {
     throw redirect(307, "/login");
   }
 
-  // Get admin email from Convex
-  const convex = new ConvexHttpClient(PUBLIC_CONVEX_URL);
-  const adminEmail = await convex.query(api.config.getAdminEmail);
+  const adminEmail = env.ADMIN_EMAIL;
 
   if (!adminEmail) {
-    throw error(500, "ADMIN_EMAIL not configured in Convex");
+    throw error(500, "ADMIN_EMAIL not configured");
   }
 
   let userEmail = null;
