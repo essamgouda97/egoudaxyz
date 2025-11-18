@@ -11,13 +11,20 @@
 </svelte:head>
 
 <div class="w-full h-[calc(100vh-4rem)]">
-    <Resizable.PaneGroup
-        direction="horizontal"
-        defaultA={data.defaultA}
-        defaultB={data.defaultB}
-        storageKey="portfolio-resize"
-    >
-        <ResumePane slot="pane-a" className="h-full w-full" />
-        <ProjectsTimelinePane slot="pane-b" className="h-full w-full" />
-    </Resizable.PaneGroup>
+    <div class="md:hidden flex flex-col h-full overflow-y-auto">
+        <ResumePane className="min-h-screen" />
+        <ProjectsTimelinePane className="min-h-screen" />
+    </div>
+    
+    <div class="hidden md:block h-full">
+        <Resizable.PaneGroup
+            direction="horizontal"
+            defaultA={data.defaultA}
+            defaultB={data.defaultB}
+            storageKey="portfolio-resize"
+        >
+            <ResumePane slot="pane-a" className="h-full w-full" />
+            <ProjectsTimelinePane slot="pane-b" className="h-full w-full" />
+        </Resizable.PaneGroup>
+    </div>
 </div>

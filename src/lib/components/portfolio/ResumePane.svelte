@@ -65,13 +65,14 @@
             <div class="space-y-1">
                 <h1 class="text-3xl font-bold">Essam Gouda</h1>
                 <p class="text-muted-foreground">ML Engineer</p>
-                <div class="flex items-center gap-2 pt-2">
+                <div class="flex flex-col md:flex-row items-start md:items-center gap-2 pt-2">
                     <Button
                         variant="outline"
                         size="sm"
                         href="https://github.com/essamgouda97"
                         target="_blank"
                         rel="noreferrer"
+                        class="w-full md:w-auto"
                     >
                         <img
                             src="/portfolio/github-logo.png"
@@ -89,6 +90,7 @@
                             );
                             toast("Email copied to clipboard!");
                         }}
+                        class="w-full md:w-auto"
                     >
                         <img
                             src="/portfolio/mail-logo.png"
@@ -97,7 +99,7 @@
                         />
                         Email
                     </Button>
-                    <Button variant="default" size="sm" onclick={exportToPDF}>
+                    <Button variant="default" size="sm" onclick={exportToPDF} class="w-full md:w-auto">
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
                             width="16"
