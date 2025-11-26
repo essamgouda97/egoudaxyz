@@ -9,7 +9,9 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as drawings from "../drawings.js";
 import type * as http from "../http.js";
+import type * as workspaces from "../workspaces.js";
 
 import type {
   ApiFromModules,
@@ -19,7 +21,9 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  drawings: typeof drawings;
   http: typeof http;
+  workspaces: typeof workspaces;
 }>;
 
 /**

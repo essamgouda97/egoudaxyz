@@ -8,5 +8,8 @@ export default defineConfig({
 		tailwindcss(),
 		sveltekit(),
 		devtoolsJson()
-	]
+	],
+	define: {
+		"process.env.NODE_ENV": '"production"'
+	}
 });

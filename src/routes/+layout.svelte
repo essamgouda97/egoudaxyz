@@ -3,6 +3,8 @@
     import { createSvelteAuthClient } from "@mmailaender/convex-better-auth-svelte/svelte";
     import { authClient } from "$lib/auth-client";
     import { PUBLIC_CONVEX_URL } from "$env/static/public";
+    import { setConvexClientContext } from "convex-svelte";
+    import { convexClientInstance } from "$lib/convex-client";
     import { onMount } from "svelte";
     import { browser } from "$app/environment";
 
@@ -16,6 +18,9 @@
 
     // Only initialize auth client on the browser
     if (browser) {
+        // Use the singleton client instance
+        setConvexClientContext(convexClientInstance);
+        
         createSvelteAuthClient({ authClient, convexUrl: PUBLIC_CONVEX_URL });
     }
 

@@ -32,3 +32,10 @@ export const createAuth = (ctx: any, { optionsOnly } = { optionsOnly: false }) =
 };
 
 export { authComponent };
+
+export const auth = betterAuth({
+  baseURL,
+  database: authComponent.adapter({} as any), // Dummy ctx for type inference/export if needed, or just rely on createAuth return type logic
+  plugins: [convex()],
+});
+
