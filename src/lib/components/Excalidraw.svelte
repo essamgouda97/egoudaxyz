@@ -46,7 +46,7 @@
     
     // If data is null/undefined, pass minimal valid empty state or just undefined to let Excalidraw handle defaults
     // Excalidraw expects { elements: [], appState: {} } structure if provided
-    const safeInitialData = data || { elements: [], appState: {} };
+    const safeInitialData = data || { elements: [], appState: { theme: "dark" } };
 
     // Sanitize appState to ensure collaborators is a Map if present, or removed if empty/invalid
     // The error 'props.appState.collaborators.forEach is not a function' suggests it might be saved as an object/array 
@@ -55,6 +55,11 @@
       // We generally don't want to persist collaborators in local storage anyway for a local-only app
       // so safe bet is to remove it from initialData
       delete safeInitialData.appState.collaborators;
+      
+      // Force dark theme if not set (or always force it if desired)
+      if (!safeInitialData.appState.theme) {
+          safeInitialData.appState.theme = "dark";
+      }
     }
 
     const element = React.createElement(Excalidraw, {

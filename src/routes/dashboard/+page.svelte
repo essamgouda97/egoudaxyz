@@ -3,14 +3,25 @@
   import Button from "$lib/components/ui/button/button.svelte";
   import * as Tabs from "$lib/components/ui/tabs";
   import * as Sidebar from "$lib/components/ui/sidebar";
+  import * as ContextMenu from "$lib/components/ui/context-menu";
+  import * as Dialog from "$lib/components/ui/dialog";
+  import * as AlertDialog from "$lib/components/ui/alert-dialog";
+  import Input from "$lib/components/ui/input/input.svelte";
+  import Label from "$lib/components/ui/label/label.svelte";
   import { goto } from "$app/navigation";
   import { onMount } from "svelte";
   import Excalidraw from "$lib/components/Excalidraw.svelte";
   import { browser } from "$app/environment";
+  import LogOut from "@lucide/svelte/icons/log-out";
 
   let workspaces: { id: string; name: string }[] = [];
   let activeWorkspaceId: string | null = null;
-  
+  let workspaceToDelete: string | null = null;
+  let workspaceToRename: string | null = null;
+  let renameValue = "";
+  let showRenameDialog = false;
+  let showDeleteDialog = false;
+
   onMount(async () => {
     // Load workspaces from storage or initialize with default
     const stored = localStorage.getItem("excalidraw-workspaces");
@@ -40,6 +51,30 @@
     localStorage.setItem("excalidraw-workspaces", JSON.stringify(workspaces));
     // Also clean up the data
     localStorage.removeItem(`excalidraw-data-${id}`);
+    workspaceToDelete = null;
+    showDeleteDialog = false;
+  }
+
+  function renameWorkspace() {
+    if (!workspaceToRename) return;
+
+    workspaces = workspaces.map(w =>
+      w.id === workspaceToRename ? { ...w, name: renameValue } : w
+    );
+    localStorage.setItem("excalidraw-workspaces", JSON.stringify(workspaces));
+    showRenameDialog = false;
+    workspaceToRename = null;
+  }
+
+  function openRenameDialog(id: string, currentName: string) {
+    workspaceToRename = id;
+    renameValue = currentName;
+    showRenameDialog = true;
+  }
+
+  function openDeleteDialog(id: string) {
+    workspaceToDelete = id;
+    showDeleteDialog = true;
   }
 
   async function handleSignOut() {
@@ -100,22 +135,32 @@
                 <Sidebar.SidebarMenu>
                   {#each workspaces as workspace (workspace.id)}
                     <Sidebar.SidebarMenuItem>
-                      <Sidebar.SidebarMenuButton
-                        onclick={() => (activeWorkspaceId = workspace.id)}
-                        isActive={activeWorkspaceId === workspace.id}
-                        class="w-full justify-between"
-                      >
-                        <span class="truncate">{workspace.name}</span>
-                      </Sidebar.SidebarMenuButton>
-                      <Sidebar.SidebarMenuAction
-                        onclick={(e) => {
-                          e.stopPropagation();
-                          deleteWorkspace(workspace.id);
-                        }}
-                      >
-                        <span class="sr-only">Delete</span>
-                        ×
-                      </Sidebar.SidebarMenuAction>
+                      <ContextMenu.Root>
+                        <ContextMenu.Trigger>
+                          <Sidebar.SidebarMenuButton
+                            onclick={() => (activeWorkspaceId = workspace.id)}
+                            isActive={activeWorkspaceId === workspace.id}
+                            class="w-full justify-between"
+                          >
+                            <span class="truncate">{workspace.name}</span>
+                          </Sidebar.SidebarMenuButton>
+                        </ContextMenu.Trigger>
+                        <ContextMenu.Content>
+                          <ContextMenu.Item onclick={() => openRenameDialog(workspace.id, workspace.name)}>
+                            Rename
+                          </ContextMenu.Item>
+                          <ContextMenu.Item
+                            onclick={() => openDeleteDialog(workspace.id)}
+                            class="text-destructive focus:text-destructive"
+                          >
+                            Delete
+                          </ContextMenu.Item>
+                        </ContextMenu.Content>
+                      </ContextMenu.Root>
+                      {#if !activeWorkspaceId}
+                        <!-- Optional: Keep a direct delete action if sidebar is collapsed or just as a shortcut -->
+                        <!-- But since we are moving to right click, we can hide the direct delete button or make it only appear on hover in a cleaner way -->
+                      {/if}
                     </Sidebar.SidebarMenuItem>
                   {/each}
                 </Sidebar.SidebarMenu>
@@ -123,9 +168,14 @@
             </Sidebar.SidebarGroup>
           </Sidebar.SidebarContent>
           <Sidebar.SidebarFooter class="border-t p-4">
-            <Button onclick={handleSignOut} variant="outline" size="sm" class="w-full">
-              Sign Out
-            </Button>
+            <Sidebar.SidebarMenu>
+              <Sidebar.SidebarMenuItem>
+                <Sidebar.SidebarMenuButton onclick={handleSignOut}>
+                  <LogOut />
+                  <span>Sign Out</span>
+                </Sidebar.SidebarMenuButton>
+              </Sidebar.SidebarMenuItem>
+            </Sidebar.SidebarMenu>
           </Sidebar.SidebarFooter>
         </Sidebar.Sidebar>
         <Sidebar.SidebarInset class="h-full overflow-hidden flex flex-col">
@@ -154,7 +204,7 @@
               <div class="flex h-full w-full items-center justify-center">
                 <div class="text-center">
                   <p class="mb-4 text-lg font-medium">No workspace selected</p>
-                  <Button onclick={createNewWorkspace}>Create First Workspace</Button>
+                  <Button onclick={createNewWorkspace}>Create  Workspace</Button>
                 </div>
               </div>
             {/if}
@@ -164,3 +214,44 @@
     </Tabs.Content>
   </Tabs.Root>
 </div>
+
+<Dialog.Root bind:open={showRenameDialog}>
+  <Dialog.Content>
+    <Dialog.Header>
+      <Dialog.Title>Rename Workspace</Dialog.Title>
+      <Dialog.Description>
+        Enter a new name for your workspace.
+      </Dialog.Description>
+    </Dialog.Header>
+    <div class="grid gap-4 py-4">
+      <div class="grid grid-cols-4 items-center gap-4">
+        <Label for="name" class="text-right">Name</Label>
+        <Input id="name" bind:value={renameValue} class="col-span-3" />
+      </div>
+    </div>
+    <Dialog.Footer>
+      <Button type="submit" onclick={renameWorkspace}>Save changes</Button>
+    </Dialog.Footer>
+  </Dialog.Content>
+</Dialog.Root>
+
+<AlertDialog.Root bind:open={showDeleteDialog}>
+  <AlertDialog.Content>
+    <AlertDialog.Header>
+      <AlertDialog.Title>Are you absolutely sure?</AlertDialog.Title>
+      <AlertDialog.Description>
+        This action cannot be undone. This will permanently delete your workspace
+        and remove all drawing data associated with it.
+      </AlertDialog.Description>
+    </AlertDialog.Header>
+    <AlertDialog.Footer>
+      <AlertDialog.Cancel onclick={() => {
+        showDeleteDialog = false;
+        workspaceToDelete = null;
+      }}>Cancel</AlertDialog.Cancel>
+      <AlertDialog.Action class="bg-destructive text-destructive-foreground hover:bg-destructive/90" onclick={() => {
+        if (workspaceToDelete) deleteWorkspace(workspaceToDelete);
+      }}>Delete</AlertDialog.Action>
+    </AlertDialog.Footer>
+  </AlertDialog.Content>
+</AlertDialog.Root>
