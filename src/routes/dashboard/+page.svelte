@@ -10,58 +10,51 @@
   import Label from "$lib/components/ui/label/label.svelte";
   import { goto } from "$app/navigation";
   import { onMount } from "svelte";
-  import Excalidraw from "$lib/components/Excalidraw.svelte";
+  import Excalidraw from "$lib/components/ExcalidrawConvex.svelte";
   import { browser } from "$app/environment";
   import LogOut from "@lucide/svelte/icons/log-out";
+  import { useQuery, useConvexClient } from "convex-svelte";
+  import { api } from "../../convex/_generated/api";
 
-  let workspaces: { id: string; name: string }[] = [];
-  let activeWorkspaceId: string | null = null;
-  let workspaceToDelete: string | null = null;
-  let workspaceToRename: string | null = null;
-  let renameValue = "";
-  let showRenameDialog = false;
-  let showDeleteDialog = false;
+  const workspacesQuery = useQuery(api.workspaces.list, {});
+  const client = useConvexClient();
 
-  onMount(async () => {
-    // Load workspaces from storage or initialize with default
-    const stored = localStorage.getItem("excalidraw-workspaces");
-    if (stored) {
-      workspaces = JSON.parse(stored);
-    } else {
-      workspaces = [];
-    }
+  // State using Svelte 5 Runes
+  let activeWorkspaceId = $state<string | null>(null);
+  let workspaceToDelete = $state<string | null>(null);
+  let workspaceToRename = $state<string | null>(null);
+  let renameValue = $state("");
+  let showRenameDialog = $state(false);
+  let showDeleteDialog = $state(false);
+
+  // Derived workspaces from Convex query (direct access, not a store)
+  let workspaces = $derived(workspacesQuery.data || []);
+
+  // Initialize active workspace if needed
+  $effect(() => {
+      if (workspaces.length > 0 && !activeWorkspaceId) {
+          activeWorkspaceId = workspaces[0]._id;
+      }
   });
 
-  function createNewWorkspace() {
-    const newId = `workspace-${Date.now()}`;
-    const newWorkspace = {
-      id: newId,
-      name: `Workspace ${workspaces.length + 1}`,
-    };
-    workspaces = [...workspaces, newWorkspace];
+  async function createNewWorkspace() {
+    const newId = await client.mutation(api.workspaces.create, { name: `Workspace ${workspaces.length + 1}` });
     activeWorkspaceId = newId;
-    localStorage.setItem("excalidraw-workspaces", JSON.stringify(workspaces));
   }
 
-  function deleteWorkspace(id: string) {
-    workspaces = workspaces.filter((w) => w.id !== id);
+  async function deleteWorkspace(id: string) {
+    await client.mutation(api.workspaces.deleteWorkspace, { id: id as any });
     if (activeWorkspaceId === id) {
-      activeWorkspaceId = workspaces[0]?.id || null;
+      activeWorkspaceId = null;
     }
-    localStorage.setItem("excalidraw-workspaces", JSON.stringify(workspaces));
-    // Also clean up the data
-    localStorage.removeItem(`excalidraw-data-${id}`);
     workspaceToDelete = null;
     showDeleteDialog = false;
   }
 
-  function renameWorkspace() {
+  async function renameWorkspace() {
     if (!workspaceToRename) return;
-
-    workspaces = workspaces.map(w =>
-      w.id === workspaceToRename ? { ...w, name: renameValue } : w
-    );
-    localStorage.setItem("excalidraw-workspaces", JSON.stringify(workspaces));
+    
+    await client.mutation(api.workspaces.rename, { id: workspaceToRename as any, name: renameValue });
     showRenameDialog = false;
     workspaceToRename = null;
   }
@@ -81,6 +74,7 @@
     await authClient.signOut();
     goto("/login");
   }
+
 
   function getWorkspaceData(id: string) {
     if (!browser) return null;
@@ -133,24 +127,24 @@
               <div class="my-2 border-b"></div>
               {#if workspaces.length > 0}
                 <Sidebar.SidebarMenu>
-                  {#each workspaces as workspace (workspace.id)}
+                  {#each workspaces as workspace (workspace._id)}
                     <Sidebar.SidebarMenuItem>
                       <ContextMenu.Root>
                         <ContextMenu.Trigger>
                           <Sidebar.SidebarMenuButton
-                            onclick={() => (activeWorkspaceId = workspace.id)}
-                            isActive={activeWorkspaceId === workspace.id}
+                            onclick={() => (activeWorkspaceId = workspace._id)}
+                            isActive={activeWorkspaceId === workspace._id}
                             class="w-full justify-between"
                           >
                             <span class="truncate">{workspace.name}</span>
                           </Sidebar.SidebarMenuButton>
                         </ContextMenu.Trigger>
                         <ContextMenu.Content>
-                          <ContextMenu.Item onclick={() => openRenameDialog(workspace.id, workspace.name)}>
+                          <ContextMenu.Item onclick={() => openRenameDialog(workspace._id, workspace.name)}>
                             Rename
                           </ContextMenu.Item>
                           <ContextMenu.Item
-                            onclick={() => openDeleteDialog(workspace.id)}
+                            onclick={() => openDeleteDialog(workspace._id)}
                             class="text-destructive focus:text-destructive"
                           >
                             Delete
@@ -184,23 +178,22 @@
             <div class="w-px h-4 bg-border mx-2"></div>
             {#if activeWorkspaceId}
               <h2 class="text-lg font-semibold truncate">
-                {workspaces.find((w) => w.id === activeWorkspaceId)?.name}
+                {workspaces.find((w) => w._id === activeWorkspaceId)?.name}
               </h2>
             {:else}
               <h2 class="text-lg font-semibold text-muted-foreground">Select a workspace</h2>
             {/if}
           </header>
           <div class="flex-1 relative w-full min-h-0">
-            {#if activeWorkspaceId}
-              {#key activeWorkspaceId}
-                <div class="absolute inset-0">
-                  <Excalidraw
-                    initialData={getWorkspaceData(activeWorkspaceId)}
-                    onChange={handleExcalidrawChange}
-                  />
-                </div>
-              {/key}
-            {:else}
+           {#if activeWorkspaceId}
+             {#key activeWorkspaceId}
+               <div class="absolute inset-0">
+                 <Excalidraw
+                   workspaceId={activeWorkspaceId}
+                 />
+               </div>
+             {/key}
+           {:else}
               <div class="flex h-full w-full items-center justify-center">
                 <div class="text-center">
                   <p class="mb-4 text-lg font-medium">No workspace selected</p>
