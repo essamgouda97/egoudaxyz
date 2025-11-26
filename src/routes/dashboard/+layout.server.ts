@@ -1,8 +1,11 @@
 import { redirect, error } from "@sveltejs/kit";
 import type { LayoutServerLoad } from "./$types";
 import { env } from "$env/dynamic/private";
+import { dev } from "$app/environment";
 
 export const load: LayoutServerLoad = async ({ locals }) => {
+  if (dev) return {};
+
   if (!locals.token) {
     throw redirect(307, "/login");
   }
