@@ -3,6 +3,24 @@
   import { browser } from '$app/environment';
   import "@excalidraw/excalidraw/index.css";
 
+  // Global module cache
+  let React: any;
+  let ReactDOM: any;
+  let ExcalidrawLib: any;
+
+  // Preload modules if in browser
+  if (browser && !React) {
+      Promise.all([
+        import('react'),
+        import('react-dom/client'),
+        import('@excalidraw/excalidraw')
+      ]).then(([r, rd, ex]) => {
+          React = r;
+          ReactDOM = rd;
+          ExcalidrawLib = ex;
+      });
+  }
+
   let { 
     initialData = null, 
     onChange = undefined,
@@ -11,18 +29,17 @@
 
   let container: HTMLDivElement;
   let root: any;
-  let React: any;
-  let ReactDOM: any;
-  let ExcalidrawLib: any;
 
   onMount(async () => {
     if (browser) {
-      // Dynamically import React and Excalidraw to avoid SSR issues
-      [React, ReactDOM, ExcalidrawLib] = await Promise.all([
-        import('react'),
-        import('react-dom/client'),
-        import('@excalidraw/excalidraw')
-      ]);
+      // Use cached modules or wait for them
+      if (!React || !ReactDOM || !ExcalidrawLib) {
+          [React, ReactDOM, ExcalidrawLib] = await Promise.all([
+            import('react'),
+            import('react-dom/client'),
+            import('@excalidraw/excalidraw')
+          ]);
+      }
 
       const { Excalidraw } = ExcalidrawLib;
 
@@ -95,6 +112,17 @@
   /* Isolate Excalidraw from Tailwind's preflight */
   :global(.excalidraw-wrapper .excalidraw) {
     font-family: "Virgil", sans-serif;
+    background-color: transparent !important; /* Let container bg show through or handle it */
+  }
+  
+  /* Force the wrapper itself to be dark to prevent flash before Excalidraw loads */
+  :global(.excalidraw-wrapper) {
+      background-color: #121212;
+  }
+
+  /* Ensure the excalidraw container inside inherits or defaults to dark */
+  :global(.excalidraw-wrapper .excalidraw-container) {
+      background-color: #121212;
   }
   
   :global(.excalidraw-wrapper svg) {
@@ -116,4 +144,4 @@
   }
 </style>
 
-<div bind:this={container} class={"excalidraw-wrapper " + className} style="height: 100%; width: 100%;"></div>
+<div bind:this={container} class={"excalidraw-wrapper " + className} style="height: 100%; width: 100%; background-color: #121212;"></div>

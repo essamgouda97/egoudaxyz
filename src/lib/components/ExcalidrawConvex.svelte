@@ -29,45 +29,67 @@
   // Track latest unsaved changes to flush on destroy
   let pendingSaveArgs: { elements: any, appState: any, files: any } | null = null;
 
-  // Load from LocalStorage immediately on mount/id change
-  $effect(() => {
-      if (browser && workspaceId) {
-          const localKey = `excalidraw-data-${workspaceId}`;
-          const stored = localStorage.getItem(localKey);
-          if (stored) {
-              try {
-                  initialData = JSON.parse(stored);
-                  isLocalLoaded = true;
-              } catch (e) {
-                  console.error("Failed to parse local storage", e);
-              }
-          } else {
-              // If no local data, wait for convex
-              initialData = null;
-              isLocalLoaded = true; 
+  // Load from LocalStorage immediately on init (Synchronously)
+  if (browser && workspaceId) {
+      const localKey = `excalidraw-data-${workspaceId}`;
+      const stored = localStorage.getItem(localKey);
+      if (stored) {
+          try {
+              initialData = JSON.parse(stored);
+              isLocalLoaded = true;
+          } catch (e) {
+              console.error("Failed to parse local storage", e);
           }
       }
-  });
+      // If no local data, isLocalLoaded stays false, triggering loading state until Convex returns
+  }
 
   // Sync strategy: 
   // 1. If we have local data, show it immediately.
   // 2. When Convex data arrives:
   //    - If local data was empty, update local with convex data and re-render (first sync).
-  //    - If local data exists, check timestamps (if we tracked them) or just let local win for now (optimistic).
-  //    - Ideally, we'd show a toast "Cloud version available" if mismatch, but for single user, local is usually "latest".
+  //    - If local data exists, compare updated timestamps.
+  //    - If Convex is newer than Local, show a toast with action to update.
   
   $effect(() => {
       if (convexData && isLocalLoaded) {
           if (!initialData) {
               // First load from cloud (new device)
               initialData = convexData;
-              // Save to local to hydrate cache
               if (browser) {
                   localStorage.setItem(`excalidraw-data-${workspaceId}`, JSON.stringify(convexData));
               }
-          } 
-          // Else: Local exists. We assume local is fresher because user is editing here.
-          // If we wanted conflict resolution, we'd check timestamps here.
+          } else if (initialData && convexData.updatedAt && initialData.updatedAt) {
+              // Conflict detection: Cloud is newer than Local
+              // We use a threshold (e.g. 2 seconds) to avoid flagging our own just-saved changes 
+              // if the clock skew or network delay is minor.
+              // However, since we save Local synchronously, Local.updatedAt should be very recent.
+              // If Cloud.updatedAt > Local.updatedAt, it implies a save from *another* device happened *after* our last local edit.
+              
+              if (convexData.updatedAt > initialData.updatedAt + 2000) { // 2s buffer
+                  // Check if we already toasted for this version to avoid spam
+                  // We can use a transient ID or just check if the timestamp is different from the last ignored one.
+                  // For simplicity, just toast.
+                  
+                  // Ideally, use sonner to show a toast with a button.
+                  // We need to track if we are currently showing this toast to avoid dupes.
+                  // But standard toast.info works.
+                  
+                  toast.info("Newer version available from cloud", {
+                      action: {
+                          label: "Load Cloud Version",
+                          onClick: () => {
+                              initialData = convexData;
+                              if (browser) {
+                                  localStorage.setItem(`excalidraw-data-${workspaceId}`, JSON.stringify(convexData));
+                              }
+                              window.location.reload(); // Simplest way to force full re-render of Excalidraw with new initialData
+                          }
+                      },
+                      duration: 10000, // Give them time to decide
+                  });
+              }
+          }
       }
   });
 

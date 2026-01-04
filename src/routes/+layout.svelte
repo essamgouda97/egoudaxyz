@@ -21,7 +21,9 @@
         // Use the singleton client instance
         setConvexClientContext(convexClientInstance);
         
-        createSvelteAuthClient({ authClient, convexUrl: PUBLIC_CONVEX_URL });
+        if (PUBLIC_CONVEX_URL) {
+            createSvelteAuthClient({ authClient, convexUrl: PUBLIC_CONVEX_URL });
+        }
     }
 
     let { children } = $props();
