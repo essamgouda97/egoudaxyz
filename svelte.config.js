@@ -1,6 +1,9 @@
-import adapter from "@sveltejs/adapter-cloudflare";
+import cloudflareAdapter from "@sveltejs/adapter-cloudflare";
+import nodeAdapter from "@sveltejs/adapter-node";
 import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
 import { mdsvex } from "mdsvex";
+
+const useNodeAdapter = process.env.BUILD_ADAPTER === "node";
 
 /** @type {import('mdsvex').MdsvexOptions} */
 const mdsvexOptions = {
@@ -11,17 +14,17 @@ const mdsvexOptions = {
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
-  // Consult https://svelte.dev/docs/kit/integrations
-  // for more information about preprocessors
   preprocess: [vitePreprocess(), mdsvex(mdsvexOptions)],
 
   kit: {
-    adapter: adapter({
-      routes: {
-        include: ["/*"],
-        exclude: ["<all>"],
-      },
-    }),
+    adapter: useNodeAdapter
+      ? nodeAdapter({ out: "build" })
+      : cloudflareAdapter({
+          routes: {
+            include: ["/*"],
+            exclude: ["<all>"],
+          },
+        }),
     alias: {
       $convex: "./src/convex",
     },

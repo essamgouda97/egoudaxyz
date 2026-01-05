@@ -1,0 +1,9 @@
+# Copy to terraform.tfvars and fill in values
+# DO NOT commit terraform.tfvars
+
+do_token       = "dop_v1_your_token_here"
+ssh_public_key = "ssh-ed25519 AAAA... your-key"
+project_name   = "egoudaxyz"
+region         = "nyc3"
+droplet_size   = "s-1vcpu-1gb"
+domain         = "egouda.xyz"

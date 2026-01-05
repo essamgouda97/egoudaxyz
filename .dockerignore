@@ -1,0 +1,28 @@
+# Environment files
+.env
+.env.*
+.env.local
+.env.development
+.env.production
+
+# Node
+node_modules
+npm-debug.log
+
+# Build outputs
+build
+.svelte-kit
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+
+# Backend (separate build)
+backend
+
+# Infrastructure
+infra

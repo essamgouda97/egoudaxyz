@@ -1,0 +1,43 @@
+{
+  "version": 4,
+  "terraform_version": "1.5.7",
+  "serial": 7,
+  "lineage": "6895655d-6ee8-b03d-bb56-d9241ef5f3e6",
+  "outputs": {
+    "cloudflare_dns_record": {
+      "value": "Type: A, Name: @, Content: 161.35.181.170, Proxy: ON",
+      "type": "string"
+    },
+    "droplet_ip": {
+      "value": "161.35.181.170",
+      "type": "string"
+    },
+    "ssh_command": {
+      "value": "ssh root@161.35.181.170",
+      "type": "string"
+    }
+  },
+  "resources": [
+    {
+      "mode": "managed",
+      "type": "digitalocean_ssh_key",
+      "name": "deploy",
+      "provider": "provider[\"registry.terraform.io/digitalocean/digitalocean\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "fingerprint": "4b:99:bd:b5:66:b6:bc:18:f5:4d:7a:50:90:60:aa:82",
+            "id": "53066196",
+            "name": "egoudaxyz-deploy-key",
+            "public_key": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCmrMGHkCFY69c0kfh2V1BIdNKZDu64+agM04cvcrEJFGFw9m5pQr/sIB3m1XhDmjyNlPV8+Lc1+8lb7j6g+0BJFGAnmnQ7UNmCXVJEMrOrnoM/ZhHwzl2HzHKSSsGoQd2JAW5Tf1ZyVLSJbzw4T0OO6Jhttnxk2PK05iFMst9j2CQO4sj/iU8vQcKkmlxpVkQUI/0TmrWqOmkLcKZW+qVduXqEgMPIA4LQPg3WXsYJjEEwRiRx+LVWyBy2jVDkEcB1TDnGtK4MlSfacGVY14YlRsYzho+YYhe8v87v698Ne+0+426YsSY/slIJYICKauIjnRDsRmM10jiTEtjCkNR6SVVwl5H/OxK4cgNHvozKyEgXfWrvx0NgqTW6UN+j5282A9HSh3yUCw8Th7b5sicZSoYQFbK7WymUh5V/UP3ctKJsObvSOoBfaNVd8ivFZOjJekaDn7Dje5zCQXdyJodEj/zr2n2HpWjUGseYj1HiQfYmihi47Y0bBczuToqyLYQE6W2f7YfNiJshVOh7t1y69/QwQzEZcmj3j5RwxNRkJcrzk6dDdWDD09Sgoi8gbEP/HMEwRUvR3SsgGt70zkFcJJzDrkPN8sWFSuBdgOACXDfVKiQBAtEQU1dclTSngA0XRUBXaJCOCDCyaG5ra2sBN3EWpg6l9ni/VpTVSTIKdQ== egouda@Essams-MacBook-Air.local",
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjoxMjAwMDAwMDAwMDB9fQ=="
+        }
+      ]
+    }
+  ],
+  "check_results": null
+}

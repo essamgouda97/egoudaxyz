@@ -1,0 +1,61 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: egoudaxyz-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_DB: egoudaxyz
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d egoudaxyz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+
+  backend:
+    image: egoudaxyz-backend
+    container_name: egoudaxyz-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql://app:${POSTGRES_PASSWORD:-changeme}@postgres:5432/egoudaxyz
+      - PYDANTIC_AI_GATEWAY_API_KEY=${PYDANTIC_AI_GATEWAY_API_KEY:-}
+      - BACKEND_CORS_ORIGINS=["http://frontend:3000","https://egouda.xyz"]
+      - LOCAL=false
+    expose:
+      - "8000"
+    networks:
+      - internal
+
+  frontend:
+    image: egoudaxyz-frontend
+    container_name: egoudaxyz-frontend
+    restart: unless-stopped
+    environment:
+      - ORIGIN=${ORIGIN:-https://egouda.xyz}
+      - SITE_URL=${PUBLIC_CONVEX_SITE_URL:-https://egouda.xyz}
+      - PUBLIC_CONVEX_URL=${PUBLIC_CONVEX_URL:-}
+      - PUBLIC_CONVEX_SITE_URL=${PUBLIC_CONVEX_SITE_URL:-}
+      - AUTH_GITHUB_ID=${AUTH_GITHUB_ID:-}
+      - AUTH_GITHUB_SECRET=${AUTH_GITHUB_SECRET:-}
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-}
+      - BACKEND_URL=http://backend:8000
+      - PORT=3000
+    ports:
+      - "127.0.0.1:3000:3000"
+    networks:
+      - internal
+
+networks:
+  internal:
+    driver: bridge
+
+volumes:
+  postgres_data:
