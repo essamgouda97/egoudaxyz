@@ -45,6 +45,7 @@
 		"vite-plugin-devtools-json": "^1.0.0"
 	},
 	"dependencies": {
+		"@ag-ui/client": "^0.0.42",
 		"@cloudflare/puppeteer": "^1.0.4",
 		"@convex-dev/better-auth": "0.9.7",
 		"@mmailaender/convex-better-auth-svelte": "0.2.1",

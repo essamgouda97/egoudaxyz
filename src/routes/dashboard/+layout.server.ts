@@ -5,7 +5,9 @@ import { dev } from "$app/environment";
 
 export const load: LayoutServerLoad = async ({ locals }) => {
   // In dev mode, skip auth check
-  if (dev) return {};
+  if (dev) {
+    return {};
+  }
 
   // Require authentication
   if (!locals.token) {

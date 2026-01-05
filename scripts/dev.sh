@@ -77,9 +77,10 @@ npm run dev &
 FRONTEND_PID=$!
 
 echo -e "${GREEN}Development servers started!${NC}"
-echo -e "  Frontend: http://localhost:5173"
-echo -e "  Backend:  http://localhost:8000"
-echo -e "  API Docs: http://localhost:8000/docs"
+echo -e "  Frontend:  http://localhost:5173"
+echo -e "  Dashboard: http://localhost:5173/dashboard"
+echo -e "  Backend:   http://localhost:8000"
+echo -e "  API Docs:  http://localhost:8000/docs"
 echo -e "${YELLOW}Press Ctrl+C to stop all services${NC}"
 
 # Wait for both processes
