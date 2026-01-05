@@ -6,8 +6,18 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     LOCAL: bool = False
 
+    # Database
+    DATABASE_URL: str = "postgresql://app:changeme@localhost:5432/egoudaxyz"
+
     # AI Provider settings
     PYDANTIC_AI_GATEWAY_API_KEY: str = ""
+    MONITOR_MODEL: str = "gateway/google-vertex:gemini-2.5-flash"
+
+    # Logfire observability
+    LOGFIRE_TOKEN: str = ""
+
+    # Scheduler settings
+    MONITOR_INTERVAL_MINUTES: int = 15
 
     # CORS - allow all origins in dev
     BACKEND_CORS_ORIGINS: list[str] = [

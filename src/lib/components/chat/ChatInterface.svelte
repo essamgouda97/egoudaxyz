@@ -5,33 +5,12 @@
   import Input from "$lib/components/ui/input/input.svelte";
   import Spinner from "$lib/components/ui/spinner/spinner.svelte";
 
-  interface Agent {
-    id: string;
-    name: string;
-    description: string;
-  }
-
   let inputValue = $state("");
   let messagesContainer: HTMLDivElement | null = $state(null);
-  let agents = $state<Agent[]>([]);
-  let selectedAgent = $state("default");
-  let loadingAgents = $state(true);
 
-  onMount(async () => {
-    // Initialize chat store
-    chatStore.init(selectedAgent);
-
-    // Fetch available agents
-    try {
-      const response = await fetch("/api/agents");
-      if (response.ok) {
-        agents = await response.json();
-      }
-    } catch (error) {
-      console.error("Failed to fetch agents:", error);
-    } finally {
-      loadingAgents = false;
-    }
+  onMount(() => {
+    // Initialize chat store with query agent
+    chatStore.init("query");
   });
 
   function scrollToBottom() {
@@ -46,12 +25,6 @@
       scrollToBottom();
     }
   });
-
-  function handleAgentChange(event: Event) {
-    const select = event.target as HTMLSelectElement;
-    selectedAgent = select.value;
-    chatStore.setAgent(selectedAgent);
-  }
 
   async function handleSubmit(e: Event) {
     e.preventDefault();
@@ -68,43 +41,9 @@
       handleSubmit(e);
     }
   }
-
-  function getSelectedAgentDescription(): string {
-    const agent = agents.find((a) => a.id === selectedAgent);
-    return agent?.description || "";
-  }
 </script>
 
-<div class="flex h-full flex-col rounded-xl border bg-card">
-  <!-- Header with Agent Selector -->
-  <div class="flex flex-col gap-3 border-b px-4 py-3">
-    <div class="flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <div class="size-2 rounded-full bg-green-500"></div>
-        {#if loadingAgents}
-          <span class="text-sm text-muted-foreground">Loading agents...</span>
-        {:else}
-          <select
-            value={selectedAgent}
-            onchange={handleAgentChange}
-            disabled={chatStore.isStreaming}
-            class="rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
-          >
-            {#each agents as agent (agent.id)}
-              <option value={agent.id}>{agent.name}</option>
-            {/each}
-          </select>
-        {/if}
-      </div>
-      <Button variant="ghost" size="sm" onclick={() => chatStore.clearMessages()}>
-        Clear
-      </Button>
-    </div>
-    {#if !loadingAgents && getSelectedAgentDescription()}
-      <p class="text-xs text-muted-foreground">{getSelectedAgentDescription()}</p>
-    {/if}
-  </div>
-
+<div class="flex h-full flex-col">
   <!-- Messages -->
   <div
     bind:this={messagesContainer}
@@ -112,7 +51,7 @@
   >
     {#if chatStore.messages.length === 0 && !chatStore.isStreaming}
       <div class="flex h-full items-center justify-center text-muted-foreground">
-        <p class="text-sm">Start a conversation with the AI agent.</p>
+        <p class="text-sm">Ask about news, markets, or social trends...</p>
       </div>
     {:else}
       {#each chatStore.messages as message (message.id)}
@@ -159,16 +98,16 @@
       <Input
         bind:value={inputValue}
         onkeydown={handleKeydown}
-        placeholder="Type a message..."
+        placeholder="Ask about the latest reports..."
         disabled={chatStore.isStreaming}
         class="flex-1"
       />
       {#if chatStore.isStreaming}
-        <Button type="button" variant="destructive" onclick={() => chatStore.cancel()}>
+        <Button type="button" variant="destructive" size="sm" onclick={() => chatStore.cancel()}>
           Stop
         </Button>
       {:else}
-        <Button type="submit" disabled={!inputValue.trim()}>
+        <Button type="submit" size="sm" disabled={!inputValue.trim()}>
           Send
         </Button>
       {/if}

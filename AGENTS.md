@@ -6,11 +6,12 @@ A monorepo with:
 - `scripts`: Development and deployment scripts
 
 # Vision
-Admin dashboard for:
-- Custom AI agent chat interfaces
+Admin dashboard ("God Mode") for:
+- **Monitor Agent**: Background agent that polls Reddit for news, markets, and social trends every 15 minutes
+- **Query Agent**: Chat interface to query monitoring reports stored in PostgreSQL
 - SSH sessions (future)
-- Agent management and monitoring
-This is a personal website so it will be simple and minimalistic and no need to overcomplicate it, pluss keep it cheap
+
+This is a personal website so it will be simple and minimalistic and no need to overcomplicate it, plus keep it cheap
 
 # Do
 - Minimal boilerplate changes, you are my principal staff pair programmer
@@ -24,7 +25,20 @@ This is a personal website so it will be simple and minimalistic and no need to 
 - Write tests/docs if not asked to
 - Don't run the services to confirm they work, instead utilize compiling to detect errors if needed
 
-# Scripts
+# Local Development
+
+## Prerequisites
+- PostgreSQL running locally (Homebrew: `brew services start postgresql`)
+- Node.js and npm
+- Python 3.11+ and uv
+
+## Database Setup (first time only)
+```bash
+psql postgres -c "CREATE ROLE app WITH LOGIN PASSWORD 'changeme';"
+psql postgres -c "CREATE DATABASE egoudaxyz OWNER app;"
+```
+
+## Scripts
 - `./scripts/dev.sh` - Start both frontend and backend for local development
 - `./scripts/deploy.sh` - Deploy to Digital Ocean (see commands below)
 

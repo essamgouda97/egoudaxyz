@@ -1,15 +1,17 @@
 """
 Chat routes using pydantic-ai AG-UI adapter.
 
-Supports multiple agents via the agent registry.
+Supports the query agent for exploring monitoring reports.
 """
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
+from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import Response
 
 from pydantic_ai.ui.ag_ui import AGUIAdapter
 
-from app.agent.core import get_agent, list_agents
+from app.agent.core import create_query_deps, get_query_agent, list_agents
+from app.core.database import get_db
 
 router = APIRouter()
 
@@ -27,13 +29,23 @@ async def chat_options(agent_id: str) -> Response:
 
 
 @router.post("/chat/{agent_id}")
-async def chat(request: Request, agent_id: str) -> Response:
+async def chat(
+    request: Request,
+    agent_id: str,
+    db: AsyncSession = Depends(get_db),
+) -> Response:
     """AG-UI compatible chat endpoint for a specific agent."""
-    agent = get_agent(agent_id)
-    return await AGUIAdapter.dispatch_request(request, agent=agent)
+    if agent_id == "query":
+        agent = get_query_agent()
+        deps = create_query_deps(db)
+        return await AGUIAdapter.dispatch_request(request, agent=agent, deps=deps)
+    else:
+        # Fallback to query agent for unknown agent IDs
+        agent = get_query_agent()
+        deps = create_query_deps(db)
+        return await AGUIAdapter.dispatch_request(request, agent=agent, deps=deps)
 
 
-# Keep the default endpoint for backwards compatibility
 @router.options("/chat")
 async def chat_default_options() -> Response:
     """Handle CORS preflight for default chat endpoint."""
@@ -41,10 +53,14 @@ async def chat_default_options() -> Response:
 
 
 @router.post("/chat")
-async def chat_default(request: Request) -> Response:
-    """AG-UI compatible chat endpoint using default agent."""
-    agent = get_agent("default")
-    return await AGUIAdapter.dispatch_request(request, agent=agent)
+async def chat_default(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    """AG-UI compatible chat endpoint using query agent."""
+    agent = get_query_agent()
+    deps = create_query_deps(db)
+    return await AGUIAdapter.dispatch_request(request, agent=agent, deps=deps)
 
 
 @router.get("/chat/health")
