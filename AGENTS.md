@@ -100,3 +100,120 @@ make logs        # Verify deployment
 # Observability
 
 Agent runs are tracked in [Pydantic Logfire](https://logfire.pydantic.dev/). The `PYDANTIC_LOGFIRE_KEY_EGOUDAXYZ` env var is automatically synced to the server via `make sync-env`.
+
+# SEO & Cloudflare Configuration
+
+## SEO Files
+- `/static/robots.txt` - Crawler rules, sitemap reference
+- `/sitemap.xml` - Dynamic sitemap (generated from pages + blog posts)
+- `/static/og-image.svg` - Open Graph image template (convert to PNG for production)
+
+## Generate OG Image
+Convert the SVG to PNG (1200x630):
+```bash
+# Using ImageMagick
+convert static/og-image.svg -resize 1200x630 static/og-image.png
+
+# Or use online tool: https://svgtopng.com
+```
+
+## Cloudflare Dashboard Settings
+
+### 1. SSL/TLS (Security)
+```
+SSL/TLS → Overview:
+  - Encryption mode: Full (strict)
+
+SSL/TLS → Edge Certificates:
+  - Always Use HTTPS: ON
+  - HTTP Strict Transport Security (HSTS): Enable
+    - Max Age: 12 months
+    - Include subdomains: ON
+    - Preload: ON
+  - Minimum TLS Version: 1.2
+  - Automatic HTTPS Rewrites: ON
+```
+
+### 2. Security Settings
+```
+Security → Settings:
+  - Security Level: Medium
+  - Challenge Passage: 30 minutes
+  - Browser Integrity Check: ON
+
+Security → Bots:
+  - Bot Fight Mode: ON
+```
+
+### 3. WAF Rules (Security → WAF → Custom Rules)
+
+**Rule 1: Block Bad Bots**
+```
+Name: Block unverified bots
+Expression: (cf.client.bot) and not (cf.verified_bot)
+Action: Block
+```
+
+**Rule 2: Challenge Suspicious Traffic**
+```
+Name: Challenge high threat score
+Expression: (cf.threat_score gt 30)
+Action: Managed Challenge
+```
+
+**Rule 3: Protect API**
+```
+Name: Protect API endpoints
+Expression: (starts_with(http.request.uri.path, "/api/")) and (cf.threat_score gt 10)
+Action: Managed Challenge
+```
+
+### 4. Rate Limiting (Security → WAF → Rate limiting rules)
+```
+Name: API rate limit
+Expression: (starts_with(http.request.uri.path, "/api/"))
+Characteristics: IP
+Period: 1 minute
+Requests: 100
+Action: Block for 1 hour
+```
+
+### 5. Speed Optimization
+```
+Speed → Optimization:
+  - Auto Minify: JS, CSS, HTML (all checked)
+  - Brotli: ON
+  - Early Hints: ON
+  - Rocket Loader: ON (test first, can break some JS)
+
+Caching → Configuration:
+  - Browser Cache TTL: 1 month
+  - Caching Level: Standard
+  - Always Online: ON
+```
+
+### 6. Security Headers (Rules → Transform Rules → Modify Response Header)
+```
+Rule name: Security Headers
+Expression: (true)
+Headers to add:
+  - X-Content-Type-Options: nosniff
+  - X-Frame-Options: DENY
+  - Referrer-Policy: strict-origin-when-cross-origin
+  - Permissions-Policy: geolocation=(), microphone=(), camera=()
+  - X-XSS-Protection: 1; mode=block
+```
+
+### 7. Page Rules (Optional)
+```
+URL: egouda.xyz/api/*
+Settings:
+  - Cache Level: Bypass
+  - Security Level: High
+```
+
+## Google Search Console
+1. Go to https://search.google.com/search-console
+2. Add property: egouda.xyz
+3. Verify via DNS (add TXT record in Cloudflare)
+4. Submit sitemap: https://egouda.xyz/sitemap.xml

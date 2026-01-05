@@ -7,7 +7,20 @@
 </script>
 
 <svelte:head>
-    <title>Portfolio</title>
+    <title>Essam Gouda | Software Engineer</title>
+    <meta name="description" content="Software engineer specializing in full-stack development, AI/ML, and cloud infrastructure. View my projects, experience, and technical blog." />
+    <link rel="canonical" href="https://egouda.xyz/" />
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="Essam Gouda | Software Engineer" />
+    <meta property="og:description" content="Software engineer specializing in full-stack development, AI/ML, and cloud infrastructure." />
+    <meta property="og:url" content="https://egouda.xyz/" />
+    <meta property="og:image" content="https://egouda.xyz/og-image.png" />
+
+    <!-- Twitter -->
+    <meta name="twitter:title" content="Essam Gouda | Software Engineer" />
+    <meta name="twitter:description" content="Software engineer specializing in full-stack development, AI/ML, and cloud infrastructure." />
+    <meta name="twitter:image" content="https://egouda.xyz/og-image.png" />
 </svelte:head>
 
 <div class="w-full h-[calc(100vh-4rem)]">

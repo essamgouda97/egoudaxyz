@@ -7,7 +7,15 @@
 </script>
 
 <svelte:head>
-    <title>Blog</title>
+    <title>Blog | Essam Gouda</title>
+    <meta name="description" content="Technical blog posts about software engineering, AI/ML, cloud infrastructure, and programming best practices." />
+    <link rel="canonical" href="https://egouda.xyz/blog" />
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="Blog | Essam Gouda" />
+    <meta property="og:description" content="Technical blog posts about software engineering, AI/ML, cloud infrastructure, and programming." />
+    <meta property="og:url" content="https://egouda.xyz/blog" />
+    <meta property="og:image" content="https://egouda.xyz/og-image.png" />
 </svelte:head>
 
 <div class="space-y-6">

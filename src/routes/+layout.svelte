@@ -94,7 +94,25 @@
 {/snippet}
 
 <svelte:head>
+    <!-- Favicon -->
     <link rel="icon" href={favicon} />
+
+    <!-- Default SEO Meta Tags -->
+    <meta name="author" content="Essam Gouda" />
+    <meta name="robots" content="index, follow" />
+    <meta name="googlebot" content="index, follow" />
+
+    <!-- Open Graph defaults (pages can override) -->
+    <meta property="og:site_name" content="egouda.xyz" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:type" content="website" />
+
+    <!-- Twitter Card defaults -->
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <!-- Theme color for mobile browsers -->
+    <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
 </svelte:head>
 <ModeWatcher />
 <Toaster />

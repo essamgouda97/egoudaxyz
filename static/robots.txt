@@ -1,3 +1,12 @@
-# allow crawling everything by default
+# https://www.robotstxt.org/robotstxt.html
 User-agent: *
-Disallow:
+Allow: /
+
+# Disallow admin/private areas
+Disallow: /dashboard
+Disallow: /login
+Disallow: /api/
+Disallow: /resume-print
+
+# Sitemap location
+Sitemap: https://egouda.xyz/sitemap.xml
