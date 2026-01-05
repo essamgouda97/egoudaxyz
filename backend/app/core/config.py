@@ -13,11 +13,15 @@ class Settings(BaseSettings):
     PYDANTIC_AI_GATEWAY_API_KEY: str = ""
     MONITOR_MODEL: str = "gateway/google-vertex:gemini-2.5-flash"
 
+    # Data source API keys
+    TAVILY_API_KEY: str = ""
+    FINNHUB_API_KEY: str = ""
+
     # Logfire observability
     LOGFIRE_TOKEN: str = ""
 
     # Scheduler settings
-    MONITOR_INTERVAL_MINUTES: int = 15
+    MONITOR_INTERVAL_MINUTES: int = 30
 
     # CORS - allow all origins in dev
     BACKEND_CORS_ORIGINS: list[str] = [

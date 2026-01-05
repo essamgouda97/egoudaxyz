@@ -6,7 +6,7 @@ A monorepo with:
 - `scripts`: Development and deployment scripts
 
 # Vision
-Admin dashboard ("God Mode") for:
+Admin dashboard ("World") for:
 - **Monitor Agent**: Background agent that polls Reddit for news, markets, and social trends every 15 minutes
 - **Query Agent**: Chat interface to query monitoring reports stored in PostgreSQL
 - SSH sessions (future)
@@ -25,6 +25,15 @@ This is a personal website so it will be simple and minimalistic and no need to 
 - Write tests/docs if not asked to
 - Don't run the services to confirm they work, instead utilize compiling to detect errors if needed
 
+# Quick Start
+
+```bash
+make help        # Show all available commands
+make db-setup    # Create local PostgreSQL (first time)
+make install     # Install dependencies
+make dev         # Start local development
+```
+
 # Local Development
 
 ## Prerequisites
@@ -32,17 +41,30 @@ This is a personal website so it will be simple and minimalistic and no need to 
 - Node.js and npm
 - Python 3.11+ and uv
 
-## Database Setup (first time only)
+## Environment Variables (in ~/.zshrc)
 ```bash
-psql postgres -c "CREATE ROLE app WITH LOGIN PASSWORD 'changeme';"
-psql postgres -c "CREATE DATABASE egoudaxyz OWNER app;"
+export PYDANTIC_AI_GATEWAY_API_KEY="your-key"
+export PYDANTIC_LOGFIRE_KEY_EGOUDAXYZ="your-logfire-token"
 ```
 
-## Scripts
-- `./scripts/dev.sh` - Start both frontend and backend for local development
-- `./scripts/deploy.sh` - Deploy to Digital Ocean (see commands below)
+## Makefile Commands
+
+| Command | Description |
+|---------|-------------|
+| `make dev` | Start local development servers |
+| `make install` | Install all dependencies |
+| `make db-setup` | Create local PostgreSQL role and database |
+| `make clean` | Clean build artifacts and caches |
+| `make sync-env` | Sync local env vars to DigitalOcean server |
+| `make deploy` | Deploy code to DigitalOcean |
+| `make setup` | Initial server setup |
+| `make ssh` | SSH into the server |
+| `make logs` | View server logs |
+| `make infra` | Create DigitalOcean droplet |
+| `make destroy` | Destroy DigitalOcean droplet |
 
 # Deployment
+
 Single Digital Ocean droplet (~$6/month) with Docker:
 - Frontend (SvelteKit SSR)
 - Backend (FastAPI) - internal only, not publicly exposed
@@ -50,20 +72,31 @@ Single Digital Ocean droplet (~$6/month) with Docker:
 - Caddy reverse proxy with auto-SSL
 - DNS via Cloudflare
 
-Deploy commands:
+## First Time Setup
 ```bash
-./scripts/deploy.sh apply    # Create droplet
-./scripts/deploy.sh setup    # Configure and start services
-./scripts/deploy.sh deploy   # Push code updates
-./scripts/deploy.sh ssh      # SSH into server
-./scripts/deploy.sh logs     # View container logs
-./scripts/deploy.sh destroy  # Tear down
+# 1. Configure terraform
+cp infra/terraform/terraform.tfvars.example infra/terraform/terraform.tfvars
+# Edit terraform.tfvars with DO token and SSH key
+
+# 2. Create droplet
+make infra
+
+# 3. Add DNS record in Cloudflare: @ → droplet IP
+
+# 4. Sync environment variables from local machine
+make sync-env
+
+# 5. Setup and start services
+make setup
 ```
 
-Setup:
-1. Copy `infra/terraform/terraform.tfvars.example` → `terraform.tfvars`
-2. Add DO token and SSH key
-3. Run `deploy.sh apply`
-4. Add A record in Cloudflare: @ → droplet IP
-5. Copy `infra/docker/.env.example` → `.env` and fill in secrets
-6. Run `deploy.sh setup`
+## Deploying Updates
+```bash
+make sync-env    # If env vars changed
+make deploy      # Push code and restart
+make logs        # Verify deployment
+```
+
+# Observability
+
+Agent runs are tracked in [Pydantic Logfire](https://logfire.pydantic.dev/). The `PYDANTIC_LOGFIRE_KEY_EGOUDAXYZ` env var is automatically synced to the server via `make sync-env`.

@@ -67,7 +67,11 @@ install_deps
 # Start backend
 echo -e "${GREEN}Starting backend on http://localhost:8000${NC}"
 cd "$PROJECT_ROOT/backend"
-LOCAL=true LOGFIRE_TOKEN="${PYDANTIC_LOGFIRE_KEY_EGOUDAXYZ:-}" uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 &
+LOCAL=true \
+  LOGFIRE_TOKEN="${PYDANTIC_LOGFIRE_KEY_EGOUDAXYZ:-}" \
+  TAVILY_API_KEY="${TAVILY_API_KEY:-}" \
+  FINNHUB_API_KEY="${FINNHUB_API_KEY:-}" \
+  uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 &
 BACKEND_PID=$!
 
 # Start frontend

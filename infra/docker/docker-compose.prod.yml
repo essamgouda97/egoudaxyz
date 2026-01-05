@@ -27,10 +27,18 @@ services:
     environment:
       - DATABASE_URL=postgresql://app:${POSTGRES_PASSWORD:-changeme}@postgres:5432/egoudaxyz
       - PYDANTIC_AI_GATEWAY_API_KEY=${PYDANTIC_AI_GATEWAY_API_KEY:-}
+      - TAVILY_API_KEY=${TAVILY_API_KEY:-}
+      - FINNHUB_API_KEY=${FINNHUB_API_KEY:-}
+      - LOGFIRE_TOKEN=${LOGFIRE_TOKEN:-}
       - BACKEND_CORS_ORIGINS=["http://frontend:3000","https://egouda.xyz"]
       - LOCAL=false
     expose:
       - "8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     networks:
       - internal
 
@@ -38,16 +46,14 @@ services:
     image: egoudaxyz-frontend
     container_name: egoudaxyz-frontend
     restart: unless-stopped
+    depends_on:
+      - backend
     environment:
       - ORIGIN=${ORIGIN:-https://egouda.xyz}
-      - SITE_URL=${PUBLIC_CONVEX_SITE_URL:-https://egouda.xyz}
       - PUBLIC_CONVEX_URL=${PUBLIC_CONVEX_URL:-}
       - PUBLIC_CONVEX_SITE_URL=${PUBLIC_CONVEX_SITE_URL:-}
-      - AUTH_GITHUB_ID=${AUTH_GITHUB_ID:-}
-      - AUTH_GITHUB_SECRET=${AUTH_GITHUB_SECRET:-}
-      - ADMIN_EMAIL=${ADMIN_EMAIL:-}
       - BACKEND_URL=http://backend:8000
-      - PORT=3000
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-}
     ports:
       - "127.0.0.1:3000:3000"
     networks:

@@ -156,6 +156,9 @@ setup_server() {
     cat > "$INFRA_DIR/docker/.env" << ENVEOF
 POSTGRES_PASSWORD=$PG_PASS
 PYDANTIC_AI_GATEWAY_API_KEY=${PYDANTIC_AI_GATEWAY_API_KEY:-}
+TAVILY_API_KEY=${TAVILY_API_KEY:-}
+FINNHUB_API_KEY=${FINNHUB_API_KEY:-}
+LOGFIRE_TOKEN=${PYDANTIC_LOGFIRE_KEY_EGOUDAXYZ:-}
 ORIGIN=https://egouda.xyz
 PUBLIC_CONVEX_URL=${PUBLIC_CONVEX_URL:-}
 PUBLIC_CONVEX_SITE_URL=${PUBLIC_CONVEX_SITE_URL:-}
@@ -170,8 +173,7 @@ ENVEOF
     # Copy configs
     echo -e "${YELLOW}Copying configs...${NC}"
     scp "$INFRA_DIR/docker/.env" root@$SERVER_IP:/opt/app/infra/docker/.env
-    scp "$INFRA_DIR/docker/docker-compose.prod.yml" root@$SERVER_IP:/opt/app/infra/docker/docker-compose.yml 2>/dev/null || \
-    scp "$INFRA_DIR/docker/docker-compose.yml" root@$SERVER_IP:/opt/app/infra/docker/docker-compose.yml
+    scp "$INFRA_DIR/docker/docker-compose.prod.yml" root@$SERVER_IP:/opt/app/infra/docker/docker-compose.yml
     scp "$INFRA_DIR/docker/Caddyfile" root@$SERVER_IP:/etc/caddy/Caddyfile
 
     # Now do the deploy
@@ -205,6 +207,9 @@ deploy_app() {
     cat > "$INFRA_DIR/docker/.env" << ENVEOF
 POSTGRES_PASSWORD=$PG_PASS
 PYDANTIC_AI_GATEWAY_API_KEY=${PYDANTIC_AI_GATEWAY_API_KEY:-}
+TAVILY_API_KEY=${TAVILY_API_KEY:-}
+FINNHUB_API_KEY=${FINNHUB_API_KEY:-}
+LOGFIRE_TOKEN=${PYDANTIC_LOGFIRE_KEY_EGOUDAXYZ:-}
 ORIGIN=https://egouda.xyz
 PUBLIC_CONVEX_URL=${PUBLIC_CONVEX_URL:-}
 PUBLIC_CONVEX_SITE_URL=${PUBLIC_CONVEX_SITE_URL:-}
@@ -214,6 +219,7 @@ ADMIN_EMAIL=${ADMIN_EMAIL:-}
 ENVEOF
 
     scp "$INFRA_DIR/docker/.env" root@$SERVER_IP:/opt/app/infra/docker/.env
+    scp "$INFRA_DIR/docker/docker-compose.prod.yml" root@$SERVER_IP:/opt/app/infra/docker/docker-compose.yml
 
     # Deploy Convex functions to production
     echo -e "${YELLOW}Deploying Convex functions...${NC}"
@@ -234,9 +240,6 @@ ENVEOF
     ssh root@$SERVER_IP "gunzip -c /tmp/frontend-image.tar.gz | docker load && \
                          gunzip -c /tmp/backend-image.tar.gz | docker load && \
                          rm /tmp/*-image.tar.gz"
-
-    # Upload docker-compose for production
-    scp "$INFRA_DIR/docker/docker-compose.prod.yml" root@$SERVER_IP:/opt/app/infra/docker/docker-compose.yml 2>/dev/null || true
 
     # Restart services
     echo -e "${YELLOW}Restarting services...${NC}"

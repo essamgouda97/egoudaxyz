@@ -1,70 +1,102 @@
 """
-News fetching tool - scrapes Reddit news subreddits.
+News fetching tool - uses Tavily API for AI-optimized search.
 
-Uses Reddit's public JSON API (no authentication required).
+Tavily provides clean, structured search results optimized for AI agents.
 """
 
 import logging
+from datetime import datetime
 
 import httpx
 
+from app.core.config import settings
+
 logger = logging.getLogger(__name__)
 
-REDDIT_USER_AGENT = "MonitorAgent/1.0 (personal monitoring bot)"
-NEWS_SUBREDDITS = ["news", "worldnews", "technews"]
+TAVILY_API_URL = "https://api.tavily.com/search"
 
 
 async def fetch_news() -> dict:
     """
-    Fetch news from Reddit news subreddits.
+    Fetch latest news using Tavily search API.
 
     Returns:
-        dict with 'items' list containing news posts
+        dict with news items including titles, URLs, content, and scores
     """
+    if not settings.TAVILY_API_KEY:
+        logger.warning("TAVILY_API_KEY not set, returning empty results")
+        return {"source": "tavily", "items": [], "count": 0, "error": "API key not configured"}
+
     items = []
 
+    # Search queries for different news categories
+    queries = [
+        "breaking news today",
+        "world news headlines",
+        "technology news today",
+    ]
+
     async with httpx.AsyncClient(timeout=30.0) as client:
-        for subreddit in NEWS_SUBREDDITS:
+        for query in queries:
             try:
-                response = await client.get(
-                    f"https://www.reddit.com/r/{subreddit}/hot.json",
-                    params={"limit": 15},
-                    headers={"User-Agent": REDDIT_USER_AGENT},
+                response = await client.post(
+                    TAVILY_API_URL,
+                    json={
+                        "api_key": settings.TAVILY_API_KEY,
+                        "query": query,
+                        "search_depth": "basic",
+                        "include_answer": False,
+                        "include_images": False,
+                        "max_results": 5,
+                    },
                 )
 
                 if response.status_code == 200:
                     data = response.json()
-                    posts = data.get("data", {}).get("children", [])
+                    results = data.get("results", [])
 
-                    for post in posts:
-                        p = post.get("data", {})
-                        # Skip stickied posts and self posts without content
-                        if p.get("stickied"):
-                            continue
-
+                    for result in results:
                         items.append({
-                            "source": f"reddit/r/{subreddit}",
-                            "title": p.get("title", ""),
-                            "url": p.get("url", ""),
-                            "score": p.get("score", 0),
-                            "num_comments": p.get("num_comments", 0),
-                            "created_utc": p.get("created_utc"),
-                            "permalink": f"https://reddit.com{p.get('permalink', '')}",
-                            "domain": p.get("domain", ""),
+                            "source": "tavily",
+                            "title": result.get("title", ""),
+                            "url": result.get("url", ""),
+                            "content": result.get("content", "")[:500],
+                            "score": result.get("score", 0),
+                            "published_date": result.get("published_date"),
+                            "domain": _extract_domain(result.get("url", "")),
+                            "query": query,
                         })
                 else:
-                    logger.warning(f"Reddit r/{subreddit} returned {response.status_code}")
+                    logger.warning(f"Tavily search failed: {response.status_code}")
 
             except Exception as e:
-                logger.error(f"Error fetching r/{subreddit}: {e}")
+                logger.error(f"Error fetching news for '{query}': {e}")
                 continue
 
-    # Sort by score (popularity)
+    # Sort by score (relevance)
     items.sort(key=lambda x: x.get("score", 0), reverse=True)
 
+    # Deduplicate by URL
+    seen_urls = set()
+    unique_items = []
+    for item in items:
+        if item["url"] not in seen_urls:
+            seen_urls.add(item["url"])
+            unique_items.append(item)
+
     return {
-        "source": "reddit_news",
-        "subreddits": NEWS_SUBREDDITS,
-        "items": items[:20],  # Top 20 across all subreddits
-        "count": len(items),
+        "source": "tavily",
+        "fetched_at": datetime.utcnow().isoformat(),
+        "items": unique_items[:15],
+        "count": len(unique_items),
     }
+
+
+def _extract_domain(url: str) -> str:
+    """Extract domain from URL."""
+    try:
+        from urllib.parse import urlparse
+        parsed = urlparse(url)
+        return parsed.netloc.replace("www.", "")
+    except Exception:
+        return ""

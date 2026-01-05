@@ -2,8 +2,34 @@
   import { onMount, onDestroy } from "svelte";
   import Button from "$lib/components/ui/button/button.svelte";
   import Spinner from "$lib/components/ui/spinner/spinner.svelte";
-  import ReportSection from "./ReportSection.svelte";
+  import SentimentBadge from "./SentimentBadge.svelte";
+  import MarketTicker from "./MarketTicker.svelte";
+  import NewsCard from "./NewsCard.svelte";
+  import TechCard from "./TechCard.svelte";
   import ChatInterface from "$lib/components/chat/ChatInterface.svelte";
+
+  interface NewsItem {
+    title: string;
+    url: string;
+    source: string;
+    summary?: string;
+  }
+
+  interface MarketQuote {
+    symbol: string;
+    price: number;
+    change: number;
+    change_percent: number;
+    sentiment: string;
+  }
+
+  interface TechItem {
+    title: string;
+    url: string;
+    score: number;
+    comments: number;
+    is_hot?: boolean;
+  }
 
   interface ReportData {
     id: string;
@@ -14,6 +40,10 @@
       news: { title: string; summary: string; key_points: string[]; sentiment: string };
       markets: { title: string; summary: string; key_points: string[]; sentiment: string };
       social: { title: string; summary: string; key_points: string[]; sentiment: string };
+      top_news?: NewsItem[];
+      market_quotes?: MarketQuote[];
+      top_tech?: TechItem[];
+      market_sentiment?: string;
     };
     sections: Record<string, {
       title: string;
@@ -29,6 +59,12 @@
   let triggering = $state(false);
   let ws: WebSocket | null = null;
   let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  // Extract rich data from report
+  const topNews = $derived(report?.full_report?.top_news || []);
+  const marketQuotes = $derived(report?.full_report?.market_quotes || []);
+  const topTech = $derived(report?.full_report?.top_tech || []);
+  const marketSentiment = $derived(report?.full_report?.market_sentiment || "neutral");
 
   async function fetchLatestReport() {
     loading = true;
@@ -89,8 +125,7 @@
     triggering = true;
     try {
       await fetch("/api/reports/trigger", { method: "POST" });
-      // Report will be updated via WebSocket or we poll after a delay
-      setTimeout(fetchLatestReport, 3000);
+      setTimeout(fetchLatestReport, 5000);
     } catch (e) {
       console.error("Failed to trigger refresh:", e);
     } finally {
@@ -113,7 +148,6 @@
 
   onMount(() => {
     fetchLatestReport();
-    // setupWebSocket(); // Uncomment when WebSocket proxy is configured
   });
 
   onDestroy(() => {
@@ -134,6 +168,9 @@
           No reports yet
         {/if}
       </span>
+      {#if report?.full_report?.news?.sentiment}
+        <SentimentBadge sentiment={report.full_report.news.sentiment} />
+      {/if}
     </div>
     <Button
       variant="outline"
@@ -152,63 +189,124 @@
 
   <!-- Main Content -->
   <div class="flex-1 overflow-auto">
-    <div class="grid gap-4 lg:grid-cols-2">
-      <!-- Summary Card -->
-      {#if report?.full_report?.executive_summary || report?.summary}
-        <div class="rounded-xl border bg-card p-4 lg:col-span-2">
-          <div class="mb-2 flex items-center gap-2">
-            <span class="text-xl">📋</span>
-            <h3 class="font-semibold">Executive Summary</h3>
+    {#if loading}
+      <div class="flex h-64 items-center justify-center">
+        <Spinner class="size-8" />
+      </div>
+    {:else if error && !report}
+      <div class="rounded-xl border border-yellow-500/50 bg-yellow-500/10 p-6 text-center">
+        <p class="text-sm text-yellow-600 dark:text-yellow-400">{error}</p>
+      </div>
+    {:else if report}
+      <div class="space-y-4">
+        <!-- Executive Summary -->
+        {#if report.full_report?.executive_summary || report.summary}
+          <div class="rounded-xl border bg-gradient-to-r from-primary/5 to-primary/10 p-5">
+            <div class="mb-2 flex items-center gap-2">
+              <span class="text-xl">📋</span>
+              <h3 class="font-semibold">Executive Summary</h3>
+            </div>
+            <p class="text-sm leading-relaxed">
+              {report.full_report?.executive_summary || report.summary}
+            </p>
           </div>
-          <p class="text-sm">
-            {report.full_report?.executive_summary || report.summary}
-          </p>
+        {/if}
+
+        <!-- Markets Ticker -->
+        {#if marketQuotes.length > 0}
+          <MarketTicker quotes={marketQuotes} marketSentiment={marketSentiment} />
+        {/if}
+
+        <!-- Three Column Grid -->
+        <div class="grid gap-4 lg:grid-cols-3">
+          <!-- News Section -->
+          <div class="rounded-xl border bg-card p-4">
+            <div class="mb-3 flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-xl">📰</span>
+                <h3 class="font-semibold">News</h3>
+              </div>
+              {#if report.full_report?.news?.sentiment}
+                <SentimentBadge sentiment={report.full_report.news.sentiment} />
+              {/if}
+            </div>
+            {#if report.full_report?.news?.summary}
+              <p class="mb-3 text-xs text-muted-foreground">{report.full_report.news.summary}</p>
+            {/if}
+            <div class="space-y-2 max-h-[400px] overflow-y-auto">
+              {#if topNews.length > 0}
+                {#each topNews.slice(0, 6) as item}
+                  <NewsCard {item} />
+                {/each}
+              {:else if report.full_report?.news?.key_points}
+                {#each report.full_report.news.key_points as point}
+                  <div class="flex gap-2 text-sm">
+                    <span class="text-muted-foreground">•</span>
+                    <span>{point}</span>
+                  </div>
+                {/each}
+              {/if}
+            </div>
+          </div>
+
+          <!-- Markets Section -->
+          <div class="rounded-xl border bg-card p-4">
+            <div class="mb-3 flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-xl">📈</span>
+                <h3 class="font-semibold">Market News</h3>
+              </div>
+              {#if report.full_report?.markets?.sentiment}
+                <SentimentBadge sentiment={report.full_report.markets.sentiment} />
+              {/if}
+            </div>
+            {#if report.full_report?.markets?.summary}
+              <p class="mb-3 text-xs text-muted-foreground">{report.full_report.markets.summary}</p>
+            {/if}
+            <div class="space-y-2 max-h-[400px] overflow-y-auto">
+              {#if report.full_report?.markets?.key_points}
+                {#each report.full_report.markets.key_points as point}
+                  <div class="flex gap-2 text-sm">
+                    <span class="text-muted-foreground">•</span>
+                    <span>{point}</span>
+                  </div>
+                {/each}
+              {/if}
+            </div>
+          </div>
+
+          <!-- Tech/Social Section -->
+          <div class="rounded-xl border bg-card p-4">
+            <div class="mb-3 flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-xl">🔥</span>
+                <h3 class="font-semibold">Tech & HN</h3>
+              </div>
+              {#if report.full_report?.social?.sentiment}
+                <SentimentBadge sentiment={report.full_report.social.sentiment} />
+              {/if}
+            </div>
+            {#if report.full_report?.social?.summary}
+              <p class="mb-3 text-xs text-muted-foreground">{report.full_report.social.summary}</p>
+            {/if}
+            <div class="space-y-2 max-h-[400px] overflow-y-auto">
+              {#if topTech.length > 0}
+                {#each topTech.slice(0, 6) as item}
+                  <TechCard {item} />
+                {/each}
+              {:else if report.full_report?.social?.key_points}
+                {#each report.full_report.social.key_points as point}
+                  <div class="flex gap-2 text-sm">
+                    <span class="text-muted-foreground">•</span>
+                    <span>{point}</span>
+                  </div>
+                {/each}
+              {/if}
+            </div>
+          </div>
         </div>
-      {/if}
 
-      <!-- Section Cards -->
-      <ReportSection
-        title="News"
-        icon="📰"
-        loading={loading}
-        data={report?.sections?.news || (report?.full_report?.news ? {
-          title: report.full_report.news.title,
-          summary: report.full_report.news.summary,
-          items: [{ key_points: report.full_report.news.key_points }]
-        } : null)}
-      />
-
-      <ReportSection
-        title="Markets"
-        icon="📈"
-        loading={loading}
-        data={report?.sections?.markets || (report?.full_report?.markets ? {
-          title: report.full_report.markets.title,
-          summary: report.full_report.markets.summary,
-          items: [{ key_points: report.full_report.markets.key_points }]
-        } : null)}
-      />
-
-      <ReportSection
-        title="Social & Tech"
-        icon="💬"
-        loading={loading}
-        data={report?.sections?.social || (report?.full_report?.social ? {
-          title: report.full_report.social.title,
-          summary: report.full_report.social.summary,
-          items: [{ key_points: report.full_report.social.key_points }]
-        } : null)}
-      />
-
-      <!-- Error Display -->
-      {#if error && !loading}
-        <div class="rounded-xl border border-yellow-500/50 bg-yellow-500/10 p-4 lg:col-span-2">
-          <p class="text-sm text-yellow-600 dark:text-yellow-400">{error}</p>
-        </div>
-      {/if}
-
-      <!-- Chat Interface -->
-      <div class="lg:col-span-2">
+        <!-- Chat Interface -->
         <div class="rounded-xl border bg-card">
           <div class="border-b px-4 py-3">
             <div class="flex items-center gap-2">
@@ -219,11 +317,11 @@
               Ask questions about the monitoring data
             </p>
           </div>
-          <div class="h-[400px]">
+          <div class="h-[350px]">
             <ChatInterface />
           </div>
         </div>
       </div>
-    </div>
+    {/if}
   </div>
 </div>

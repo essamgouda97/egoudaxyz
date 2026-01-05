@@ -1,7 +1,7 @@
 """
 Monitor Agent - Background agent that fetches and synthesizes data.
 
-Runs on a schedule to collect news, markets, and social trends,
+Runs on a schedule to collect news (Tavily), markets (Finnhub), and tech trends (HackerNews),
 then uses AI to synthesize findings into a structured report.
 """
 
@@ -25,9 +25,34 @@ class MonitorDeps(BaseModel):
         arbitrary_types_allowed = True
 
 
+class NewsItem(BaseModel):
+    """Individual news item."""
+    title: str
+    url: str
+    source: str
+    summary: str | None = None
+
+
+class MarketQuote(BaseModel):
+    """Stock quote data."""
+    symbol: str
+    price: float
+    change: float
+    change_percent: float
+    sentiment: str
+
+
+class TechItem(BaseModel):
+    """HackerNews/tech item."""
+    title: str
+    url: str
+    score: int
+    comments: int
+    is_hot: bool = False
+
+
 class TopicSection(BaseModel):
     """A section of the monitoring report."""
-
     title: str
     summary: str
     key_points: list[str]
@@ -36,11 +61,15 @@ class TopicSection(BaseModel):
 
 class MonitorOutput(BaseModel):
     """Structured output from the monitor agent."""
-
     executive_summary: str
     news: TopicSection
     markets: TopicSection
     social: TopicSection
+    # Rich data for dashboard
+    top_news: list[NewsItem] = []
+    market_quotes: list[MarketQuote] = []
+    top_tech: list[TechItem] = []
+    market_sentiment: str = "neutral"
 
 
 monitor_agent = Agent(
@@ -49,11 +78,22 @@ monitor_agent = Agent(
     output_type=MonitorOutput,
     system_prompt="""You are an intelligence monitoring agent. Your job is to analyze data from multiple sources and create a comprehensive monitoring report.
 
+Data Sources:
+- News: Tavily AI-powered search (real-time news from multiple sources)
+- Markets: Finnhub API (real stock prices, market news)
+- Social/Tech: HackerNews (trending tech discussions)
+
 For each topic section (news, markets, social), you should:
 1. Identify the most important/trending items
 2. Summarize key themes and patterns
 3. Note any significant developments or anomalies
 4. Assess overall sentiment (positive, negative, neutral, or mixed)
+
+IMPORTANT: Populate the rich data fields:
+- top_news: Extract 5-8 most important news items with title, url, source, summary
+- market_quotes: Include stock quotes from the market data (symbol, price, change, change_percent, sentiment)
+- top_tech: Extract 5-8 top HackerNews stories with title, url, score, comments, is_hot
+- market_sentiment: Overall market sentiment based on price changes
 
 Your executive summary should:
 - Highlight the 2-3 most significant developments across all topics
@@ -66,22 +106,22 @@ Be objective and factual. Flag anything unusual or potentially significant.""",
 
 @monitor_agent.tool
 async def get_news_data(ctx: RunContext[MonitorDeps]) -> dict:
-    """Fetch the latest news from Reddit news subreddits."""
-    logger.info("Fetching news data...")
+    """Fetch latest news using Tavily AI-powered search. Returns headlines from multiple sources."""
+    logger.info("Fetching news data from Tavily...")
     return await fetch_news()
 
 
 @monitor_agent.tool
 async def get_market_data(ctx: RunContext[MonitorDeps]) -> dict:
-    """Fetch market discussions and sentiment from Reddit finance subreddits."""
-    logger.info("Fetching market data...")
+    """Fetch real market data from Finnhub. Returns stock quotes (SPY, QQQ, AAPL, etc.) and market news."""
+    logger.info("Fetching market data from Finnhub...")
     return await fetch_markets()
 
 
 @monitor_agent.tool
 async def get_social_trends(ctx: RunContext[MonitorDeps]) -> dict:
-    """Fetch technology and social trends from Reddit."""
-    logger.info("Fetching social trends...")
+    """Fetch trending tech stories from HackerNews. Returns top stories with scores and comment counts."""
+    logger.info("Fetching tech trends from HackerNews...")
     return await fetch_social()
 
 
@@ -96,8 +136,9 @@ async def run_monitor() -> MonitorOutput:
     deps = MonitorDeps()
     result = await monitor_agent.run(
         "Perform a comprehensive scan. Use your tools to fetch news, market data, "
-        "and social trends. Then synthesize the findings into a structured report "
-        "with an executive summary and section breakdowns.",
+        "and social/tech trends. Then synthesize the findings into a structured report "
+        "with an executive summary, section breakdowns, AND populate the rich data fields "
+        "(top_news, market_quotes, top_tech, market_sentiment) for the dashboard.",
         deps=deps,
     )
 

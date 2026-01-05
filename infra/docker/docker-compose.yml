@@ -29,8 +29,10 @@ services:
     environment:
       - DATABASE_URL=postgresql://app:${POSTGRES_PASSWORD:-changeme}@postgres:5432/egoudaxyz
       - PYDANTIC_AI_GATEWAY_API_KEY=${PYDANTIC_AI_GATEWAY_API_KEY:-}
+      - TAVILY_API_KEY=${TAVILY_API_KEY:-}
+      - FINNHUB_API_KEY=${FINNHUB_API_KEY:-}
       - LOGFIRE_TOKEN=${LOGFIRE_TOKEN:-}
-      - BACKEND_CORS_ORIGINS=http://frontend:3000
+      - BACKEND_CORS_ORIGINS=["http://frontend:3000","https://egouda.xyz"]
       - LOCAL=false
     # NOT exposed to host - only internal network
     expose:
@@ -57,6 +59,7 @@ services:
       - PUBLIC_CONVEX_SITE_URL=${PUBLIC_CONVEX_SITE_URL:-}
       # Backend is accessible via docker network hostname
       - BACKEND_URL=http://backend:8000
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-}
     ports:
       - "127.0.0.1:3000:3000"
     networks:
