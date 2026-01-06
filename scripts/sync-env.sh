@@ -43,6 +43,10 @@ ORIGIN=https://egouda.xyz
 PUBLIC_CONVEX_URL=${PUBLIC_CONVEX_URL:-}
 PUBLIC_CONVEX_SITE_URL=${PUBLIC_CONVEX_SITE_URL:-}
 ADMIN_EMAIL=${ADMIN_EMAIL:-}
+
+# Docker Hub (for pulling private images)
+DOCKERHUB_USERNAME=${DOCKERHUB_USERNAME:-}
+DOCKERHUB_TOKEN=${DOCKERHUB_TOKEN:-}
 EOF
 }
 
@@ -82,5 +86,11 @@ echo "$ENV_CONTENT" | ssh "root@$SERVER_IP" "cat > $REMOTE_ENV_PATH"
 echo -e "${GREEN}Uploading docker-compose.yml...${NC}"
 scp "$PROJECT_ROOT/infra/docker/docker-compose.prod.yml" "root@$SERVER_IP:$REMOTE_DOCKER_DIR/docker-compose.yml"
 
+# Login to Docker Hub on server (for private images)
+if [ -n "$DOCKERHUB_USERNAME" ] && [ -n "$DOCKERHUB_TOKEN" ]; then
+    echo -e "${GREEN}Logging into Docker Hub on server...${NC}"
+    ssh "root@$SERVER_IP" "echo '$DOCKERHUB_TOKEN' | docker login -u '$DOCKERHUB_USERNAME' --password-stdin"
+fi
+
 echo -e "${GREEN}Done! Environment synced to $SERVER_IP:$REMOTE_ENV_PATH${NC}"
-echo -e "${YELLOW}Restart containers with: ssh root@$SERVER_IP 'cd $REMOTE_DOCKER_DIR && docker compose up -d'${NC}"
+echo -e "${YELLOW}Restart containers with: ssh root@$SERVER_IP 'cd $REMOTE_DOCKER_DIR && docker compose pull && docker compose up -d'${NC}"
