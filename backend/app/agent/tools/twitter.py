@@ -5,6 +5,7 @@ Uses Twitter API v2 with Bearer Token authentication.
 
 import logging
 import re
+import time
 from urllib.parse import urlparse
 
 import httpx
@@ -14,6 +15,10 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 TWITTER_API_BASE = "https://api.twitter.com/2"
+
+# In-memory tweet cache: {tweet_id: (data, timestamp)}
+_tweet_cache: dict[str, tuple[dict, float]] = {}
+CACHE_TTL_SECONDS = 900  # 15 minutes
 
 
 def extract_tweet_id(url: str) -> str | None:
@@ -38,6 +43,25 @@ def extract_tweet_id(url: str) -> str | None:
     return None
 
 
+def _get_cached_tweet(tweet_id: str) -> dict | None:
+    """Get tweet from cache if valid."""
+    if tweet_id in _tweet_cache:
+        data, timestamp = _tweet_cache[tweet_id]
+        if time.time() - timestamp < CACHE_TTL_SECONDS:
+            logger.info(f"Cache hit for tweet {tweet_id}")
+            return data
+        else:
+            # Expired, remove from cache
+            del _tweet_cache[tweet_id]
+    return None
+
+
+def _cache_tweet(tweet_id: str, data: dict) -> None:
+    """Store tweet in cache."""
+    _tweet_cache[tweet_id] = (data, time.time())
+    logger.info(f"Cached tweet {tweet_id}")
+
+
 async def fetch_tweet(url: str) -> dict:
     """
     Fetch tweet content from Twitter API v2.
@@ -48,13 +72,18 @@ async def fetch_tweet(url: str) -> dict:
     Returns:
         dict with tweet text, author info, and metadata
     """
-    if not settings.TWITTER_BEARER_TOKEN:
-        logger.error("TWITTER_BEARER_TOKEN not configured")
-        return {"error": "Twitter API not configured"}
-
     tweet_id = extract_tweet_id(url)
     if not tweet_id:
         return {"error": "Invalid Twitter/X URL format"}
+
+    # Check cache first
+    cached = _get_cached_tweet(tweet_id)
+    if cached:
+        return cached
+
+    if not settings.TWITTER_BEARER_TOKEN:
+        logger.error("TWITTER_BEARER_TOKEN not configured")
+        return {"error": "Twitter API not configured"}
 
     headers = {
         "Authorization": f"Bearer {settings.TWITTER_BEARER_TOKEN}",
@@ -108,7 +137,7 @@ async def fetch_tweet(url: str) -> dict:
                 if media_item["url"]:
                     media.append(media_item)
 
-            return {
+            result = {
                 "id": tweet_data.get("id"),
                 "text": tweet_data.get("text", ""),
                 "author": {
@@ -122,6 +151,10 @@ async def fetch_tweet(url: str) -> dict:
                 "media": media,
                 "original_url": url,
             }
+
+            # Cache successful response
+            _cache_tweet(tweet_id, result)
+            return result
 
         except httpx.TimeoutException:
             return {"error": "Twitter API timeout"}
