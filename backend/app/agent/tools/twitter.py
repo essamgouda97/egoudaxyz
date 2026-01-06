@@ -79,6 +79,8 @@ async def fetch_tweet(url: str) -> dict:
                 return {"error": "Invalid Twitter API credentials"}
             elif response.status_code == 404:
                 return {"error": "Tweet not found or deleted"}
+            elif response.status_code == 429:
+                return {"error": "Twitter rate limit exceeded. Please wait 15 minutes and try again."}
             elif response.status_code != 200:
                 logger.error(
                     f"Twitter API error: {response.status_code} - {response.text}"

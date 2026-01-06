@@ -116,6 +116,7 @@
     preview = null;
     result = null;
     error = null;
+    lastFetchedUrl = "";
   }
 
   function handleKeydown(e: KeyboardEvent) {
@@ -124,8 +125,12 @@
     }
   }
 
+  // Track if we've already fetched for this URL to prevent duplicate requests
+  let lastFetchedUrl = $state("");
+
   $effect(() => {
-    if (isValidTwitterUrl && !preview && !result) {
+    if (isValidTwitterUrl && !preview && !result && tweetUrl !== lastFetchedUrl) {
+      lastFetchedUrl = tweetUrl;
       fetchPreview();
     }
   });
