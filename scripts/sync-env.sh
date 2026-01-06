@@ -91,7 +91,12 @@ scp "$PROJECT_ROOT/infra/docker/docker-compose.prod.yml" "root@$SERVER_IP:$REMOT
 if [ -n "$DOCKERHUB_USERNAME" ] && [ -n "$DOCKERHUB_TOKEN" ]; then
     echo -e "${GREEN}Logging into Docker Hub on server...${NC}"
     ssh "root@$SERVER_IP" "echo '$DOCKERHUB_TOKEN' | docker login -u '$DOCKERHUB_USERNAME' --password-stdin"
+else
+    echo -e "${YELLOW}Warning: DOCKERHUB_USERNAME or DOCKERHUB_TOKEN not set, skipping Docker Hub login${NC}"
 fi
 
-echo -e "${GREEN}Done! Environment synced to $SERVER_IP:$REMOTE_ENV_PATH${NC}"
-echo -e "${YELLOW}Restart containers with: ssh root@$SERVER_IP 'cd $REMOTE_DOCKER_DIR && docker compose pull && docker compose up -d'${NC}"
+# Pull latest images and restart containers
+echo -e "${GREEN}Pulling latest images and restarting containers...${NC}"
+ssh "root@$SERVER_IP" "cd $REMOTE_DOCKER_DIR && docker compose pull && docker compose up -d"
+
+echo -e "${GREEN}Done! Environment synced and containers restarted on $SERVER_IP${NC}"
