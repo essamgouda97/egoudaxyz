@@ -61,9 +61,10 @@ async def fetch_tweet(url: str) -> dict:
     }
 
     params = {
-        "tweet.fields": "text,author_id,created_at,public_metrics,entities",
-        "expansions": "author_id",
+        "tweet.fields": "text,author_id,created_at,public_metrics,entities,attachments",
+        "expansions": "author_id,attachments.media_keys",
         "user.fields": "name,username,profile_image_url",
+        "media.fields": "url,preview_image_url,type,width,height,alt_text",
     }
 
     async with httpx.AsyncClient(timeout=30.0) as client:
@@ -88,8 +89,22 @@ async def fetch_tweet(url: str) -> dict:
             tweet_data = data.get("data", {})
             includes = data.get("includes", {})
             users = includes.get("users", [])
+            media_list = includes.get("media", [])
 
             author = users[0] if users else {}
+
+            # Build media array with URLs
+            media = []
+            for m in media_list:
+                media_item = {
+                    "type": m.get("type"),  # "photo", "video", "animated_gif"
+                    "url": m.get("url") or m.get("preview_image_url"),
+                    "width": m.get("width"),
+                    "height": m.get("height"),
+                    "alt_text": m.get("alt_text"),
+                }
+                if media_item["url"]:
+                    media.append(media_item)
 
             return {
                 "id": tweet_data.get("id"),
@@ -102,6 +117,7 @@ async def fetch_tweet(url: str) -> dict:
                 "created_at": tweet_data.get("created_at"),
                 "metrics": tweet_data.get("public_metrics", {}),
                 "entities": tweet_data.get("entities", {}),
+                "media": media,
                 "original_url": url,
             }
 

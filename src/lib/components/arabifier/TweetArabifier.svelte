@@ -4,6 +4,14 @@
   import Spinner from "$lib/components/ui/spinner/spinner.svelte";
   import * as Card from "$lib/components/ui/card";
 
+  interface MediaItem {
+    type: string;
+    url: string;
+    width?: number;
+    height?: number;
+    alt_text?: string;
+  }
+
   interface TweetPreview {
     id: string;
     text: string;
@@ -13,6 +21,7 @@
       profile_image: string;
     };
     created_at: string;
+    media?: MediaItem[];
   }
 
   interface ArabifyResult {
@@ -190,6 +199,18 @@
               <span class="text-muted-foreground">@{preview.author.username}</span>
             </div>
             <p class="mt-2 whitespace-pre-wrap">{preview.text}</p>
+
+            {#if preview.media && preview.media.length > 0}
+              <div class="mt-3 grid gap-2 {preview.media.length === 1 ? '' : 'grid-cols-2'}">
+                {#each preview.media as media}
+                  <img
+                    src={media.url}
+                    alt={media.alt_text || "Tweet media"}
+                    class="rounded-lg w-full object-cover max-h-64"
+                  />
+                {/each}
+              </div>
+            {/if}
           </div>
         </div>
       </Card.Content>
@@ -197,43 +218,68 @@
   {/if}
 
   {#if result}
-    <div class="grid gap-4 md:grid-cols-2">
-      <Card.Root>
-        <Card.Header>
-          <Card.Title class="flex items-center gap-2 text-base">
-            <span>Original</span>
-            {#if result.author_username}
-              <span class="text-sm font-normal text-muted-foreground">
-                @{result.author_username}
-              </span>
-            {/if}
-          </Card.Title>
-        </Card.Header>
-        <Card.Content>
-          <p class="whitespace-pre-wrap text-sm">{result.original_text}</p>
-        </Card.Content>
-      </Card.Root>
+    <div class="flex flex-col gap-4">
+      <!-- Side by side text comparison -->
+      <div class="grid gap-4 md:grid-cols-2">
+        <Card.Root>
+          <Card.Header>
+            <Card.Title class="flex items-center gap-2 text-base">
+              <span>Original</span>
+              {#if result.author_username}
+                <span class="text-sm font-normal text-muted-foreground">
+                  @{result.author_username}
+                </span>
+              {/if}
+            </Card.Title>
+          </Card.Header>
+          <Card.Content>
+            <p class="whitespace-pre-wrap text-sm">{result.original_text}</p>
+          </Card.Content>
+        </Card.Root>
 
-      <Card.Root class="border-primary/50">
-        <Card.Header>
-          <Card.Title class="flex items-center justify-between text-base">
-            <span>Arabified</span>
-            <Button variant="outline" size="sm" onclick={copyToClipboard}>
-              {copied ? "Copied!" : "Copy"}
-            </Button>
-          </Card.Title>
-        </Card.Header>
-        <Card.Content>
-          <p class="whitespace-pre-wrap text-sm" dir="auto">
-            {result.arabified_text}
-          </p>
-          {#if result.note}
-            <p class="mt-4 text-xs italic text-muted-foreground">
-              Note: {result.note}
+        <Card.Root class="border-primary/50">
+          <Card.Header>
+            <Card.Title class="flex items-center justify-between text-base">
+              <span>Arabified</span>
+              <Button variant="outline" size="sm" onclick={copyToClipboard}>
+                {copied ? "Copied!" : "Copy"}
+              </Button>
+            </Card.Title>
+          </Card.Header>
+          <Card.Content>
+            <p class="whitespace-pre-wrap text-sm" dir="auto">
+              {result.arabified_text}
             </p>
-          {/if}
-        </Card.Content>
-      </Card.Root>
+            {#if result.note}
+              <p class="mt-4 text-xs italic text-muted-foreground">
+                Note: {result.note}
+              </p>
+            {/if}
+          </Card.Content>
+        </Card.Root>
+      </div>
+
+      <!-- Media from original tweet -->
+      {#if preview?.media && preview.media.length > 0}
+        <Card.Root>
+          <Card.Header>
+            <Card.Title class="text-sm text-muted-foreground">
+              Media (attach to your arabified tweet)
+            </Card.Title>
+          </Card.Header>
+          <Card.Content>
+            <div class="grid gap-2 {preview.media.length === 1 ? '' : 'grid-cols-2'}">
+              {#each preview.media as media}
+                <img
+                  src={media.url}
+                  alt={media.alt_text || "Tweet media"}
+                  class="rounded-lg w-full object-cover max-h-80"
+                />
+              {/each}
+            </div>
+          </Card.Content>
+        </Card.Root>
+      {/if}
     </div>
 
     <div class="flex justify-center gap-2">
