@@ -2,13 +2,21 @@
   import { authClient } from "$lib/auth-client";
   import { goto } from "$app/navigation";
   import Button from "$lib/components/ui/button/button.svelte";
-  import MonitorDashboard from "$lib/components/monitor/MonitorDashboard.svelte";
+  import TweetArabifier from "$lib/components/arabifier/TweetArabifier.svelte";
 
   async function handleSignOut() {
     await authClient.signOut();
     goto("/login");
   }
 </script>
+
+<svelte:head>
+  <title>Tweet Arabifier | egouda.xyz</title>
+  <meta
+    name="description"
+    content="Convert your tweets to modern Egyptian Arabic with natural English mixing"
+  />
+</svelte:head>
 
 <div class="flex h-screen flex-col">
   <!-- Header -->
@@ -29,7 +37,9 @@
   </header>
 
   <!-- Main Content -->
-  <main class="flex-1 overflow-hidden p-4">
-    <MonitorDashboard />
+  <main class="flex-1 overflow-auto p-6">
+    <div class="mx-auto max-w-4xl">
+      <TweetArabifier />
+    </div>
   </main>
 </div>
