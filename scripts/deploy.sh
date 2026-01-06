@@ -83,26 +83,7 @@ terraform_destroy() {
     terraform destroy
 }
 
-# Build frontend Docker image locally
-build_frontend() {
-    echo -e "${YELLOW}Building frontend Docker image...${NC}"
-    cd "$PROJECT_ROOT"
-    docker build --platform linux/amd64 \
-        --build-arg PUBLIC_CONVEX_URL="${PUBLIC_CONVEX_URL:-}" \
-        --build-arg PUBLIC_CONVEX_SITE_URL="${PUBLIC_CONVEX_SITE_URL:-}" \
-        -t egoudaxyz-frontend -f infra/docker/Dockerfile.frontend .
-    docker save egoudaxyz-frontend | gzip > /tmp/frontend-image.tar.gz
-    echo -e "${GREEN}Frontend image built!${NC}"
-}
-
-# Build backend Docker image locally
-build_backend() {
-    echo -e "${YELLOW}Building backend Docker image...${NC}"
-    cd "$PROJECT_ROOT"
-    docker build --platform linux/amd64 -t egoudaxyz-backend -f infra/docker/Dockerfile.backend backend/
-    docker save egoudaxyz-backend | gzip > /tmp/backend-image.tar.gz
-    echo -e "${GREEN}Backend image built!${NC}"
-}
+DOCKERHUB_REPO="essamgouda/egoudaxyz"
 
 # First-time server setup
 setup_server() {
@@ -179,14 +160,25 @@ ENVEOF
     scp "$INFRA_DIR/docker/docker-compose.prod.yml" root@$SERVER_IP:/opt/app/infra/docker/docker-compose.yml
     scp "$INFRA_DIR/docker/Caddyfile" root@$SERVER_IP:/etc/caddy/Caddyfile
 
-    # Now do the deploy
-    deploy_app
+    # Pull images from Docker Hub and start services
+    echo -e "${YELLOW}Pulling images and starting services...${NC}"
+    ssh root@$SERVER_IP "cd /opt/app/infra/docker && docker compose pull && docker compose up -d"
+
+    # Deploy Convex functions to production
+    echo -e "${YELLOW}Deploying Convex functions...${NC}"
+    cd "$PROJECT_ROOT"
+    if [ -n "$CONVEX_DEPLOY_KEY" ]; then
+        CONVEX_DEPLOY_KEY="$CONVEX_DEPLOY_KEY" npx convex deploy -y
+    else
+        echo -e "${YELLOW}CONVEX_DEPLOY_KEY not set, skipping Convex deploy${NC}"
+    fi
 
     # Start Caddy
     ssh root@$SERVER_IP "systemctl restart caddy"
 
     echo -e "${GREEN}Setup complete!${NC}"
     echo -e "Site: https://egouda.xyz"
+    echo -e "${YELLOW}Note: Watchtower will auto-update containers when new images are pushed to Docker Hub${NC}"
 }
 
 # Deploy (build locally, push to server)
@@ -236,23 +228,9 @@ ENVEOF
     fi
     CONVEX_DEPLOY_KEY="$CONVEX_DEPLOY_KEY" npx convex deploy -y
 
-    # Build locally
-    build_frontend
-    build_backend
-
-    # Upload and load images
-    echo -e "${YELLOW}Uploading images...${NC}"
-    scp /tmp/frontend-image.tar.gz /tmp/backend-image.tar.gz root@$SERVER_IP:/tmp/
-    ssh root@$SERVER_IP "gunzip -c /tmp/frontend-image.tar.gz | docker load && \
-                         gunzip -c /tmp/backend-image.tar.gz | docker load && \
-                         rm /tmp/*-image.tar.gz"
-
-    # Restart services
-    echo -e "${YELLOW}Restarting services...${NC}"
-    ssh root@$SERVER_IP "cd /opt/app/infra/docker && docker compose up -d"
-
-    # Cleanup local
-    rm -f /tmp/frontend-image.tar.gz /tmp/backend-image.tar.gz
+    # Pull latest images from Docker Hub and restart
+    echo -e "${YELLOW}Pulling latest images and restarting services...${NC}"
+    ssh root@$SERVER_IP "cd /opt/app/infra/docker && docker compose pull && docker compose up -d && docker image prune -f"
 
     echo -e "${GREEN}Deployment complete!${NC}"
 }

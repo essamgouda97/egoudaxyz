@@ -18,7 +18,7 @@ services:
       - internal
 
   backend:
-    image: egoudaxyz-backend
+    image: essamgouda/egoudaxyz:backend
     container_name: egoudaxyz-backend
     restart: unless-stopped
     depends_on:
@@ -41,9 +41,11 @@ services:
       retries: 3
     networks:
       - internal
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
 
   frontend:
-    image: egoudaxyz-frontend
+    image: essamgouda/egoudaxyz:frontend
     container_name: egoudaxyz-frontend
     restart: unless-stopped
     depends_on:
@@ -56,6 +58,21 @@ services:
       - ADMIN_EMAIL=${ADMIN_EMAIL:-}
     ports:
       - "127.0.0.1:3000:3000"
+    networks:
+      - internal
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_POLL_INTERVAL=60
+      - WATCHTOWER_LABEL_ENABLE=true
     networks:
       - internal
 

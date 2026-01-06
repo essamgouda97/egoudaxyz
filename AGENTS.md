@@ -217,3 +217,29 @@ Settings:
 2. Add property: egouda.xyz
 3. Verify via DNS (add TXT record in Cloudflare)
 4. Submit sitemap: https://egouda.xyz/sitemap.xml
+
+# CI/CD (GitHub Actions)
+
+Auto-deploys on merge to `main` using Docker Hub + Watchtower:
+1. GitHub Actions builds and pushes images to `essamgouda/egoudaxyz:frontend` and `essamgouda/egoudaxyz:backend`
+2. Watchtower on the server auto-pulls new images every 60 seconds
+
+## Required GitHub Secrets
+
+Go to: **Repository → Settings → Secrets and variables → Actions → New repository secret**
+
+| Secret | How to get it |
+|--------|---------------|
+| `DOCKERHUB_USERNAME` | Your Docker Hub username (e.g., `essamgouda`) |
+| `DOCKERHUB_TOKEN` | Docker Hub → Account Settings → Security → New Access Token |
+| `CONVEX_DEPLOY_KEY` | Convex Dashboard → Settings → Deploy Key |
+| `PUBLIC_CONVEX_URL` | Convex Dashboard → Settings (e.g., `https://xxx.convex.cloud`) |
+| `PUBLIC_CONVEX_SITE_URL` | Convex Dashboard → Settings (e.g., `https://xxx.convex.site`) |
+
+## How It Works
+- No SSH keys or server access needed in CI
+- Images are public on Docker Hub
+- Watchtower watches for new image tags and restarts containers automatically
+
+## Manual Trigger
+You can also trigger deploys manually from GitHub Actions tab → Deploy to DigitalOcean → Run workflow
