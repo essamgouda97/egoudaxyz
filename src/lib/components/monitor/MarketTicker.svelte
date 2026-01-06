@@ -1,6 +1,8 @@
 <script lang="ts">
   interface Quote {
     symbol: string;
+    name?: string;
+    category?: string;
     price: number;
     change: number;
     change_percent: number;
@@ -14,13 +16,12 @@
 
   let { quotes = [], marketSentiment = "neutral" }: Props = $props();
 
+  // Split quotes by category
+  const indices = $derived(quotes.filter(q => q.category === "index"));
+  const holdings = $derived(quotes.filter(q => q.category === "holding" || !q.category));
+
   function formatPrice(price: number): string {
     return price.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 });
-  }
-
-  function formatChange(change: number, percent: number): string {
-    const sign = change >= 0 ? "+" : "";
-    return `${sign}${change.toFixed(2)} (${sign}${percent.toFixed(2)}%)`;
   }
 
   const overallColor = $derived(
@@ -30,7 +31,8 @@
 </script>
 
 <div class="rounded-xl border bg-card p-4 {overallColor}">
-  <div class="mb-3 flex items-center justify-between">
+  <!-- Header -->
+  <div class="mb-4 flex items-center justify-between">
     <div class="flex items-center gap-2">
       <span class="text-xl">📊</span>
       <h3 class="font-semibold">Markets</h3>
@@ -47,16 +49,42 @@
   {#if quotes.length === 0}
     <p class="text-sm text-muted-foreground">No market data available</p>
   {:else}
-    <div class="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-5">
-      {#each quotes.slice(0, 10) as quote}
-        <div class="rounded-lg bg-muted/50 p-2 text-center">
-          <div class="text-xs font-semibold text-muted-foreground">{quote.symbol}</div>
-          <div class="text-sm font-bold">{formatPrice(quote.price)}</div>
-          <div class="text-xs {quote.change >= 0 ? 'text-green-500' : 'text-red-500'}">
-            {quote.change >= 0 ? '↑' : '↓'} {Math.abs(quote.change_percent).toFixed(2)}%
+    <div class="space-y-4">
+      <!-- World Indices -->
+      {#if indices.length > 0}
+        <div>
+          <div class="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">World</div>
+          <div class="grid grid-cols-5 gap-2">
+            {#each indices as quote}
+              <div class="rounded-lg bg-muted/50 p-2 text-center">
+                <div class="text-[10px] text-muted-foreground truncate" title={quote.name}>{quote.name || quote.symbol}</div>
+                <div class="text-sm font-bold">{formatPrice(quote.price)}</div>
+                <div class="text-xs {quote.change >= 0 ? 'text-green-500' : 'text-red-500'}">
+                  {quote.change >= 0 ? '↑' : '↓'} {Math.abs(quote.change_percent).toFixed(2)}%
+                </div>
+              </div>
+            {/each}
           </div>
         </div>
-      {/each}
+      {/if}
+
+      <!-- Holdings -->
+      {#if holdings.length > 0}
+        <div>
+          <div class="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Holdings</div>
+          <div class="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-5">
+            {#each holdings as quote}
+              <div class="rounded-lg bg-muted/50 p-2 text-center">
+                <div class="text-[10px] text-muted-foreground truncate" title={quote.name}>{quote.symbol}</div>
+                <div class="text-sm font-bold">{formatPrice(quote.price)}</div>
+                <div class="text-xs {quote.change >= 0 ? 'text-green-500' : 'text-red-500'}">
+                  {quote.change >= 0 ? '↑' : '↓'} {Math.abs(quote.change_percent).toFixed(2)}%
+                </div>
+              </div>
+            {/each}
+          </div>
+        </div>
+      {/if}
     </div>
   {/if}
 </div>

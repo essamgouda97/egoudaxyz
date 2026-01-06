@@ -36,6 +36,8 @@ class NewsItem(BaseModel):
 class MarketQuote(BaseModel):
     """Stock quote data."""
     symbol: str
+    name: str = ""
+    category: str = "holding"  # "index" or "holding"
     price: float
     change: float
     change_percent: float

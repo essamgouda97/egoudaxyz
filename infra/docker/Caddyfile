@@ -1,6 +1,11 @@
 {$DOMAIN:egouda.xyz} {
-    # All traffic goes to frontend
-    # Backend is internal only (localhost:8000) - not exposed publicly
+    # WebSocket endpoint - proxy to backend
+    @websocket {
+        path /ws/*
+    }
+    reverse_proxy @websocket backend:8000
+
+    # All other traffic goes to frontend
     reverse_proxy localhost:3000
 
     log {

@@ -17,6 +17,8 @@
 
   interface MarketQuote {
     symbol: string;
+    name?: string;
+    category?: string;
     price: number;
     change: number;
     change_percent: number;
@@ -92,7 +94,7 @@
 
   function setupWebSocket() {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/api/ws/reports`;
+    const wsUrl = `${protocol}//${window.location.host}/ws/reports`;
 
     try {
       ws = new WebSocket(wsUrl);
@@ -148,6 +150,7 @@
 
   onMount(() => {
     fetchLatestReport();
+    setupWebSocket();
   });
 
   onDestroy(() => {

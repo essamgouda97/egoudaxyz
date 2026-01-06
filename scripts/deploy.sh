@@ -147,11 +147,14 @@ setup_server() {
     # Generate/update .env from local environment
     echo -e "${YELLOW}Syncing environment variables...${NC}"
 
-    # Preserve existing postgres password or generate new one
-    if [ -f "$INFRA_DIR/docker/.env" ]; then
-        PG_PASS=$(grep POSTGRES_PASSWORD "$INFRA_DIR/docker/.env" | cut -d= -f2-)
+    # Preserve existing postgres password from server, or generate new one for first-time setup
+    PG_PASS=$(ssh root@$SERVER_IP "grep '^POSTGRES_PASSWORD=' /opt/app/infra/docker/.env 2>/dev/null | cut -d= -f2-" || echo "")
+    if [ -z "$PG_PASS" ]; then
+        echo -e "${YELLOW}First-time setup, generating new POSTGRES_PASSWORD...${NC}"
+        PG_PASS=$(openssl rand -base64 24)
+    else
+        echo -e "${GREEN}Preserving existing POSTGRES_PASSWORD from server${NC}"
     fi
-    PG_PASS="${PG_PASS:-$(openssl rand -base64 24)}"
 
     cat > "$INFRA_DIR/docker/.env" << ENVEOF
 POSTGRES_PASSWORD=$PG_PASS
@@ -197,12 +200,15 @@ deploy_app() {
 
     echo -e "${GREEN}Deploying to $SERVER_IP...${NC}"
 
-    # Sync env vars from local environment
+    # Sync env vars - preserve existing postgres password from SERVER
     echo -e "${YELLOW}Syncing environment variables...${NC}"
-    if [ -f "$INFRA_DIR/docker/.env" ]; then
-        PG_PASS=$(grep POSTGRES_PASSWORD "$INFRA_DIR/docker/.env" | cut -d= -f2-)
+    PG_PASS=$(ssh root@$SERVER_IP "grep '^POSTGRES_PASSWORD=' /opt/app/infra/docker/.env 2>/dev/null | cut -d= -f2-" || echo "")
+    if [ -z "$PG_PASS" ]; then
+        echo -e "${YELLOW}No existing password on server, generating new one...${NC}"
+        PG_PASS=$(openssl rand -base64 24)
+    else
+        echo -e "${GREEN}Preserving existing POSTGRES_PASSWORD from server${NC}"
     fi
-    PG_PASS="${PG_PASS:-$(openssl rand -base64 24)}"
 
     cat > "$INFRA_DIR/docker/.env" << ENVEOF
 POSTGRES_PASSWORD=$PG_PASS

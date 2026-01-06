@@ -67,7 +67,8 @@ app.add_middleware(
 # Include routers
 app.include_router(chat_router, prefix=settings.API_V1_STR, tags=["chat"])
 app.include_router(reports_router, prefix=settings.API_V1_STR, tags=["reports"])
-app.include_router(websocket_router, prefix=settings.API_V1_STR, tags=["websocket"])
+# WebSocket at root level (no /api/v1 prefix) for easier Caddy proxying
+app.include_router(websocket_router, tags=["websocket"])
 
 
 @app.get("/health")

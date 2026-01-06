@@ -15,8 +15,25 @@ logger = logging.getLogger(__name__)
 
 FINNHUB_BASE_URL = "https://finnhub.io/api/v1"
 
-# Key symbols to track
-SYMBOLS = ["SPY", "QQQ", "DIA", "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA"]
+# Symbols to track with category tags
+SYMBOLS = {
+    # World Indices
+    "SPY": {"name": "S&P 500", "category": "index"},
+    "QQQ": {"name": "Nasdaq 100", "category": "index"},
+    "DIA": {"name": "Dow Jones", "category": "index"},
+    "GLD": {"name": "Gold", "category": "index"},
+    "USO": {"name": "Oil", "category": "index"},
+    # User Holdings
+    "VOO": {"name": "Vanguard S&P", "category": "holding"},
+    "GOOGL": {"name": "Alphabet", "category": "holding"},
+    "AMZN": {"name": "Amazon", "category": "holding"},
+    "AAPL": {"name": "Apple", "category": "holding"},
+    "AMD": {"name": "AMD", "category": "holding"},
+    "NVDA": {"name": "NVIDIA", "category": "holding"},
+    "F": {"name": "Ford", "category": "holding"},
+    "SU": {"name": "Suncor", "category": "holding"},
+    "CVE": {"name": "Cenovus", "category": "holding"},
+}
 
 
 async def fetch_markets() -> dict:
@@ -45,7 +62,7 @@ async def fetch_markets() -> dict:
             logger.error(f"Error fetching market status: {e}")
 
         # Fetch quotes for key symbols
-        for symbol in SYMBOLS:
+        for symbol, meta in SYMBOLS.items():
             try:
                 response = await client.get(f"{FINNHUB_BASE_URL}/quote", params={"symbol": symbol})
                 if response.status_code == 200:
@@ -55,6 +72,8 @@ async def fetch_markets() -> dict:
                         change_percent = data.get("dp", 0) or 0
                         quotes.append({
                             "symbol": symbol,
+                            "name": meta["name"],
+                            "category": meta["category"],
                             "price": round(data.get("c", 0), 2),
                             "change": round(change, 2),
                             "change_percent": round(change_percent, 2),

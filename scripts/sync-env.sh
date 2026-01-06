@@ -51,6 +51,13 @@ echo -e "${YELLOW}Syncing environment variables to server...${NC}"
 SERVER_IP=$(get_server_ip)
 echo -e "Server IP: ${GREEN}$SERVER_IP${NC}"
 
+# Fetch existing postgres password from server (preserve it!)
+EXISTING_PG_PASS=$(ssh -o StrictHostKeyChecking=accept-new "root@$SERVER_IP" "grep '^POSTGRES_PASSWORD=' $REMOTE_ENV_PATH 2>/dev/null | cut -d= -f2-" || echo "")
+if [ -n "$EXISTING_PG_PASS" ]; then
+    echo -e "${GREEN}Preserving existing POSTGRES_PASSWORD from server${NC}"
+    export POSTGRES_PASSWORD="$EXISTING_PG_PASS"
+fi
+
 # Generate env content
 ENV_CONTENT=$(build_env_content)
 
