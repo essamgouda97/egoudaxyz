@@ -7,9 +7,39 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
+# Parse flags
+AUTO_YES=false
+while getopts "y" opt; do
+    case $opt in
+        y) AUTO_YES=true ;;
+        *) echo "Usage: $0 [-y]" && exit 1 ;;
+    esac
+done
+
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REMOTE_ENV_PATH="/opt/app/infra/docker/.env"
 REMOTE_DOCKER_DIR="/opt/app/infra/docker"
+MAX_RETRIES=5
+
+# Retry SSH/SCP commands with exponential backoff
+retry_ssh() {
+    local cmd="$1"
+    local attempt=1
+    local delay=2
+
+    while [ $attempt -le $MAX_RETRIES ]; do
+        if eval "$cmd"; then
+            return 0
+        fi
+        echo -e "${YELLOW}SSH failed (attempt $attempt/$MAX_RETRIES), retrying in ${delay}s...${NC}"
+        sleep $delay
+        attempt=$((attempt + 1))
+        delay=$((delay * 2))
+    done
+
+    echo -e "${RED}SSH failed after $MAX_RETRIES attempts${NC}"
+    return 1
+}
 
 # Get server IP from terraform
 get_server_ip() {
@@ -57,7 +87,7 @@ SERVER_IP=$(get_server_ip)
 echo -e "Server IP: ${GREEN}$SERVER_IP${NC}"
 
 # Fetch existing postgres password from server (preserve it!)
-EXISTING_PG_PASS=$(ssh -o StrictHostKeyChecking=accept-new "root@$SERVER_IP" "grep '^POSTGRES_PASSWORD=' $REMOTE_ENV_PATH 2>/dev/null | cut -d= -f2-" || echo "")
+EXISTING_PG_PASS=$(retry_ssh "ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new 'root@$SERVER_IP' \"grep '^POSTGRES_PASSWORD=' $REMOTE_ENV_PATH 2>/dev/null | cut -d= -f2-\"" || echo "")
 if [ -n "$EXISTING_PG_PASS" ]; then
     echo -e "${GREEN}Preserving existing POSTGRES_PASSWORD from server${NC}"
     export POSTGRES_PASSWORD="$EXISTING_PG_PASS"
@@ -70,33 +100,35 @@ ENV_CONTENT=$(build_env_content)
 echo -e "\n${YELLOW}Environment variables to sync:${NC}"
 echo "$ENV_CONTENT" | sed -E 's/(PASSWORD|KEY|TOKEN|SECRET)=.+/\1=****/g'
 
-# Confirm
-echo -e "\n${YELLOW}Continue? [y/N]${NC}"
-read -r response
-if [[ ! "$response" =~ ^[Yy]$ ]]; then
-    echo "Aborted."
-    exit 0
+# Confirm (skip if -y flag)
+if [ "$AUTO_YES" = false ]; then
+    echo -e "\n${YELLOW}Continue? [y/N]${NC}"
+    read -r response
+    if [[ ! "$response" =~ ^[Yy]$ ]]; then
+        echo "Aborted."
+        exit 0
+    fi
 fi
 
 # Upload to server
 echo -e "\n${GREEN}Uploading .env to server...${NC}"
-ssh -o StrictHostKeyChecking=accept-new "root@$SERVER_IP" "mkdir -p $REMOTE_DOCKER_DIR"
-echo "$ENV_CONTENT" | ssh "root@$SERVER_IP" "cat > $REMOTE_ENV_PATH"
+retry_ssh "ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new 'root@$SERVER_IP' 'mkdir -p $REMOTE_DOCKER_DIR'"
+echo "$ENV_CONTENT" | retry_ssh "ssh -o ConnectTimeout=10 'root@$SERVER_IP' 'cat > $REMOTE_ENV_PATH'"
 
 # Also sync docker-compose.yml (use prod version for server)
 echo -e "${GREEN}Uploading docker-compose.yml...${NC}"
-scp "$PROJECT_ROOT/infra/docker/docker-compose.prod.yml" "root@$SERVER_IP:$REMOTE_DOCKER_DIR/docker-compose.yml"
+retry_ssh "scp -o ConnectTimeout=10 '$PROJECT_ROOT/infra/docker/docker-compose.prod.yml' 'root@$SERVER_IP:$REMOTE_DOCKER_DIR/docker-compose.yml'"
 
 # Login to Docker Hub on server (for private images)
 if [ -n "$DOCKERHUB_USERNAME" ] && [ -n "$DOCKERHUB_TOKEN" ]; then
     echo -e "${GREEN}Logging into Docker Hub on server...${NC}"
-    ssh "root@$SERVER_IP" "echo '$DOCKERHUB_TOKEN' | docker login -u '$DOCKERHUB_USERNAME' --password-stdin"
+    retry_ssh "ssh -o ConnectTimeout=10 'root@$SERVER_IP' \"echo '$DOCKERHUB_TOKEN' | docker login -u '$DOCKERHUB_USERNAME' --password-stdin\""
 else
     echo -e "${YELLOW}Warning: DOCKERHUB_USERNAME or DOCKERHUB_TOKEN not set, skipping Docker Hub login${NC}"
 fi
 
 # Pull latest images and restart containers
 echo -e "${GREEN}Pulling latest images and restarting containers...${NC}"
-ssh "root@$SERVER_IP" "cd $REMOTE_DOCKER_DIR && docker compose pull && docker compose up -d"
+retry_ssh "ssh -o ConnectTimeout=10 'root@$SERVER_IP' 'cd $REMOTE_DOCKER_DIR && docker compose pull && docker compose up -d'"
 
 echo -e "${GREEN}Done! Environment synced and containers restarted on $SERVER_IP${NC}"

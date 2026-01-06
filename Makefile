@@ -1,4 +1,4 @@
-.PHONY: dev install sync-env deploy setup ssh logs destroy clean db-setup help
+.PHONY: dev install sync-env sync-env-y deploy setup ssh logs destroy clean db-setup help
 
 # Default target
 help:
@@ -12,6 +12,7 @@ help:
 	@echo ""
 	@echo "Deployment:"
 	@echo "  sync-env   Sync local env vars to DigitalOcean server"
+	@echo "  sync-env-y Sync env vars (no confirmation prompt)"
 	@echo "  deploy     Deploy code to DigitalOcean"
 	@echo "  setup      Initial server setup (after 'make infra')"
 	@echo "  ssh        SSH into the server"
@@ -43,6 +44,9 @@ clean:
 # Deployment
 sync-env:
 	@./scripts/sync-env.sh
+
+sync-env-y:
+	@./scripts/sync-env.sh -y
 
 deploy:
 	./scripts/deploy.sh deploy
