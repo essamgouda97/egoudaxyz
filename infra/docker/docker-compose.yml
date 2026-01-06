@@ -31,6 +31,7 @@ services:
       - PYDANTIC_AI_GATEWAY_API_KEY=${PYDANTIC_AI_GATEWAY_API_KEY:-}
       - TAVILY_API_KEY=${TAVILY_API_KEY:-}
       - FINNHUB_API_KEY=${FINNHUB_API_KEY:-}
+      - TWITTER_BEARER_TOKEN=${TWITTER_BEARER_TOKEN:-}
       - LOGFIRE_TOKEN=${LOGFIRE_TOKEN:-}
       - BACKEND_CORS_ORIGINS=["http://frontend:3000","https://egouda.xyz"]
       - LOCAL=false
