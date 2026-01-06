@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     # Data source API keys
     TAVILY_API_KEY: str = ""
     FINNHUB_API_KEY: str = ""
+    TWITTER_BEARER_TOKEN: str = ""
 
     # Logfire observability
     LOGFIRE_TOKEN: str = ""

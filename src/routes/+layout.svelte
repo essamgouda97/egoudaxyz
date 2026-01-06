@@ -140,6 +140,20 @@
                         <NavigationMenu.Link>
                             {#snippet child()}
                                 <a
+                                    href="/arabifier"
+                                    data-sveltekit-preload-data="hover"
+                                    class={navigationMenuTriggerStyle()}
+                                >
+                                    Arabifier
+                                </a>
+                            {/snippet}
+                        </NavigationMenu.Link>
+                    </NavigationMenu.Item>
+
+                    <NavigationMenu.Item>
+                        <NavigationMenu.Link>
+                            {#snippet child()}
+                                <a
                                     href="/"
                                     data-sveltekit-preload-data="hover"
                                     class={navigationMenuTriggerStyle()}
