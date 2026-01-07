@@ -55,7 +55,7 @@ setup:
 	./scripts/deploy.sh setup
 
 ssh:
-	./scripts/deploy.sh ssh
+	@command -v mosh >/dev/null 2>&1 && mosh do || ./scripts/deploy.sh ssh
 
 logs:
 	./scripts/deploy.sh logs

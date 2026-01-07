@@ -21,6 +21,9 @@ REMOTE_ENV_PATH="/opt/app/infra/docker/.env"
 REMOTE_DOCKER_DIR="/opt/app/infra/docker"
 MAX_RETRIES=5
 
+# SSH options for flaky connections
+SSH_OPTS="-o ConnectTimeout=30 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -o StrictHostKeyChecking=accept-new -o TCPKeepAlive=yes"
+
 # Retry SSH/SCP commands with exponential backoff
 retry_ssh() {
     local cmd="$1"
@@ -87,7 +90,7 @@ SERVER_IP=$(get_server_ip)
 echo -e "Server IP: ${GREEN}$SERVER_IP${NC}"
 
 # Fetch existing postgres password from server (preserve it!)
-EXISTING_PG_PASS=$(retry_ssh "ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new 'root@$SERVER_IP' \"grep '^POSTGRES_PASSWORD=' $REMOTE_ENV_PATH 2>/dev/null | cut -d= -f2-\"" || echo "")
+EXISTING_PG_PASS=$(retry_ssh "ssh $SSH_OPTS 'root@$SERVER_IP' \"grep '^POSTGRES_PASSWORD=' $REMOTE_ENV_PATH 2>/dev/null | cut -d= -f2-\"" || echo "")
 if [ -n "$EXISTING_PG_PASS" ]; then
     echo -e "${GREEN}Preserving existing POSTGRES_PASSWORD from server${NC}"
     export POSTGRES_PASSWORD="$EXISTING_PG_PASS"
@@ -112,23 +115,23 @@ fi
 
 # Upload to server
 echo -e "\n${GREEN}Uploading .env to server...${NC}"
-retry_ssh "ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new 'root@$SERVER_IP' 'mkdir -p $REMOTE_DOCKER_DIR'"
-echo "$ENV_CONTENT" | retry_ssh "ssh -o ConnectTimeout=10 'root@$SERVER_IP' 'cat > $REMOTE_ENV_PATH'"
+retry_ssh "ssh $SSH_OPTS 'root@$SERVER_IP' 'mkdir -p $REMOTE_DOCKER_DIR'"
+echo "$ENV_CONTENT" | retry_ssh "ssh $SSH_OPTS 'root@$SERVER_IP' 'cat > $REMOTE_ENV_PATH'"
 
 # Also sync docker-compose.yml (use prod version for server)
 echo -e "${GREEN}Uploading docker-compose.yml...${NC}"
-retry_ssh "scp -o ConnectTimeout=10 '$PROJECT_ROOT/infra/docker/docker-compose.prod.yml' 'root@$SERVER_IP:$REMOTE_DOCKER_DIR/docker-compose.yml'"
+retry_ssh "scp $SSH_OPTS '$PROJECT_ROOT/infra/docker/docker-compose.prod.yml' 'root@$SERVER_IP:$REMOTE_DOCKER_DIR/docker-compose.yml'"
 
 # Login to Docker Hub on server (for private images)
 if [ -n "$DOCKERHUB_USERNAME" ] && [ -n "$DOCKERHUB_TOKEN" ]; then
     echo -e "${GREEN}Logging into Docker Hub on server...${NC}"
-    retry_ssh "ssh -o ConnectTimeout=10 'root@$SERVER_IP' \"echo '$DOCKERHUB_TOKEN' | docker login -u '$DOCKERHUB_USERNAME' --password-stdin\""
+    retry_ssh "ssh $SSH_OPTS 'root@$SERVER_IP' \"echo '$DOCKERHUB_TOKEN' | docker login -u '$DOCKERHUB_USERNAME' --password-stdin\""
 else
     echo -e "${YELLOW}Warning: DOCKERHUB_USERNAME or DOCKERHUB_TOKEN not set, skipping Docker Hub login${NC}"
 fi
 
 # Pull latest images and restart containers
 echo -e "${GREEN}Pulling latest images and restarting containers...${NC}"
-retry_ssh "ssh -o ConnectTimeout=10 'root@$SERVER_IP' 'cd $REMOTE_DOCKER_DIR && docker compose pull && docker compose up -d'"
+retry_ssh "ssh $SSH_OPTS 'root@$SERVER_IP' 'cd $REMOTE_DOCKER_DIR && docker compose pull && docker compose up -d'"
 
 echo -e "${GREEN}Done! Environment synced and containers restarted on $SERVER_IP${NC}"
