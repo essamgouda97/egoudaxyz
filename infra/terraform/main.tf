@@ -21,11 +21,12 @@ resource "digitalocean_ssh_key" "deploy" {
 
 # Single droplet for everything
 resource "digitalocean_droplet" "app" {
-  name     = var.project_name
-  size     = var.droplet_size
-  image    = "docker-20-04"
-  region   = var.region
-  ssh_keys = [digitalocean_ssh_key.deploy.fingerprint]
+  name       = var.project_name
+  size       = var.droplet_size
+  image      = "docker-20-04"
+  region     = var.region
+  ssh_keys   = [digitalocean_ssh_key.deploy.fingerprint]
+  monitoring = true
 
   tags = [var.project_name]
 
@@ -33,6 +34,9 @@ resource "digitalocean_droplet" "app" {
     #!/bin/bash
     # Minimal setup - rest done in deploy script
     mkdir -p /opt/app
+
+    # Install DigitalOcean metrics agent
+    curl -sSL https://repos.insights.digitalocean.com/install.sh | bash
   EOF
 }
 
