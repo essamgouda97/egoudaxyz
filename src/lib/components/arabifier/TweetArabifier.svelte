@@ -111,6 +111,14 @@
     }
   }
 
+  function postToTwitter() {
+    if (!result?.arabified_text) return;
+
+    const text = encodeURIComponent(result.arabified_text);
+    const url = `https://twitter.com/intent/tweet?text=${text}`;
+    window.open(url, "_blank", "width=550,height=520");
+  }
+
   function reset() {
     tweetUrl = "";
     preview = null;
@@ -246,9 +254,14 @@
           <Card.Header>
             <Card.Title class="flex items-center justify-between text-base">
               <span>Arabified</span>
-              <Button variant="outline" size="sm" onclick={copyToClipboard}>
-                {copied ? "Copied!" : "Copy"}
-              </Button>
+              <div class="flex gap-2">
+                <Button variant="outline" size="sm" onclick={copyToClipboard}>
+                  {copied ? "Copied!" : "Copy"}
+                </Button>
+                <Button size="sm" onclick={postToTwitter}>
+                  Post to Twitter
+                </Button>
+              </div>
             </Card.Title>
           </Card.Header>
           <Card.Content>

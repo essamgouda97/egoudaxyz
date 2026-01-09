@@ -15,6 +15,40 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
+# =============================================================================
+# EXAMPLE TWEETS - Edit these to match your personal style
+# Format: (original_english, arabified_egyptian)
+# These are used as few-shot examples to guide the AI's arabification style
+# =============================================================================
+EXAMPLE_TWEETS: list[tuple[str, str]] = [
+    # Tech announcement - shows code-switching with Arabic sentence structure
+    (
+        "Just shipped a new feature that I've been working on for weeks. The API is so clean now.",
+        "لسه نازل feature جديدة كنت شغال عليها من اسابيع. الـAPI بقى clean جداً دلوقتي.",
+    ),
+    # Casual reaction - Egyptian expressions
+    (
+        "This is literally the funniest thing I've seen all day",
+        "ده literally أضحك حاجة شوفتها النهاردة",
+    ),
+    # Question/engagement - natural flow
+    (
+        "What's your favorite tool for building APIs? I've been using FastAPI and it's amazing",
+        "ايه أحسن tool بتستخدموها لبناء APIs؟ انا بستخدم FastAPI وهي amazing",
+    ),
+    # Excitement/hype
+    (
+        "The new Claude model is insane. I can't believe how good it is at coding.",
+        "الـClaude model الجديد ده insane. مش مصدق قد ايه هو كويس في الـcoding.",
+    ),
+    # Sharing work
+    (
+        "Been working on this project for months and it's finally live! Check it out",
+        "شغال على الـproject ده من شهور واخيراً live! شوفوه",
+    ),
+    # Add your own examples below - the more examples, the better the style matching
+]
+
 
 class ArabifierDeps(BaseModel):
     """Dependencies for the arabifier agent."""
@@ -33,71 +67,65 @@ class ArabifiedOutput(BaseModel):
     note: str | None = None
 
 
-ARABIFIER_SYSTEM_PROMPT = """You are an expert in Egyptian Arabic (Masri/العامية المصرية) and social media language. Your task is to "Arabify" English tweets - converting them to modern, casual Egyptian Arabic as it's naturally written on social media.
+def _build_examples_section() -> str:
+    """Build the examples section from EXAMPLE_TWEETS."""
+    if not EXAMPLE_TWEETS:
+        return ""
 
-CRITICAL GUIDELINES FOR ARABIFICATION:
+    lines = ["REFERENCE EXAMPLES (match this style closely):"]
+    for i, (english, arabic) in enumerate(EXAMPLE_TWEETS, 1):
+        lines.append(f"\nExample {i}:")
+        lines.append(f'English: "{english}"')
+        lines.append(f'Egyptian: "{arabic}"')
 
-1. **Egyptian Dialect ONLY**: Use Egyptian Arabic (Masri), NEVER Modern Standard Arabic (Fusha). Examples:
-   - "What" = "ايه" NOT "ماذا"
-   - "Why" = "ليه" NOT "لماذا"
-   - "Like this" = "كده" NOT "هكذا"
-   - "Now" = "دلوقتي" NOT "الآن"
-   - "Want" = "عايز/عايزة" NOT "أريد"
-   - "Good" = "كويس" NOT "جيد"
-   - "A lot" = "كتير" NOT "كثير"
-   - "He/She says" = "بيقول/بتقول" NOT "يقول"
-   - "Going to" = "هـ" prefix (هروح، هعمل) NOT "سوف"
+    return "\n".join(lines)
 
-2. **Natural Code-Switching**: Egyptians naturally mix English words in casual speech. KEEP certain English words when they feel natural:
-   - Tech terms: post, tweet, like, share, app, phone, laptop, code, bug, feature, API, stack
-   - Common borrowed words: okay, cool, nice, thanks, sorry, literally, actually, basically
-   - Brand names and proper nouns (Claude, Pydantic, FastAPI, etc.)
-   - Words without natural Egyptian equivalents
-   - Example: "الـpost ده literally killed me" NOT "المنشور ده قتلني حرفيا"
-   - Example: "الـstack ده actually insane" NOT "المجموعة دي مجنونة"
 
-3. **Tone & Style**:
-   - Match the original tweet's energy and emotion exactly
-   - Preserve humor, sarcasm, enthusiasm, and intent
-   - Use appropriate Egyptian expressions and idioms when fitting
-   - Keep emojis exactly as they are
-   - Make it sound like a real Egyptian developer/tech person wrote it
+ARABIFIER_SYSTEM_PROMPT = f"""You are an expert in Egyptian Arabic (Masri/العامية المصرية). Your task is to "Arabify" English tweets into natural Egyptian Arabic as written on social media.
 
-4. **Script Rules**:
-   - Write Arabic words in Arabic script
-   - Keep English words in Latin script when mixing (this is how Egyptians actually write online)
-   - Use "الـ" before English nouns when appropriate (الـAPI, الـcode, الـstack)
+IMPORTANT: Convert AS MUCH AS POSSIBLE to Arabic. The output should be primarily Arabic with only selective English.
 
-5. **Preserve Structure**:
-   - Maintain numbered lists, bullet points
-   - Keep hashtags as-is
-   - Keep mentions (@username) as-is
-   - Preserve line breaks and formatting
+## DIALECT RULES (Egyptian Arabic ONLY - NO Fusha):
+- "What" = "ايه" (NOT ماذا)
+- "Why" = "ليه" (NOT لماذا)
+- "Now" = "دلوقتي" (NOT الآن)
+- "Want" = "عايز" (NOT أريد)
+- "Good" = "كويس" (NOT جيد)
+- "A lot" = "كتير" (NOT كثير)
+- "Going to" = "هـ" prefix (هروح، هعمل) (NOT سوف)
+- "Can" = "اقدر" (NOT أستطيع)
+- "Because" = "عشان" (NOT لأن)
+- "Thing" = "حاجة" (NOT شيء)
 
-EXAMPLES:
+## WHAT TO CONVERT TO ARABIC (do this!):
+- Common verbs: working → شغال, believe → مصدق, check → شوف, see → شوف
+- Common nouns: people → ناس, time → وقت, way → طريقة
+- Adjectives: good → كويس, new → جديد, amazing → رهيب
+- Adverbs: really → فعلاً, finally → اخيراً, already → خلاص
+- Pronouns & connectors: this → ده/دي, that → ده, I → انا, we → احنا
 
-Input: "Claude code + pydantic ai + fastapi + nextjs + pydantic logfire is actually an insane stack, I have a solid overview over the full market right now."
-Output: "Claude code + pydantic ai + fastapi + nextjs + pydantic logfire الـstack ده actually insane، عندي overview كامل على الـmarket دلوقتي."
+## WHAT TO KEEP IN ENGLISH (only these):
+- Brand names: Claude, Pydantic, FastAPI, React, etc.
+- Technical nouns with no good equivalent: API, stack, code, bug, feature, bot, model
+- A few common borrowed words that Egyptians actually use: cool, nice, literally, actually, insane
+- Hashtags and @mentions
 
-Input: "1. I can check my research polymarket trading bot as it thinks"
-Output: "1. اقدر اشوف الـresearch polymarket trading bot بتاعي وهو بيفكر"
+## FORMATTING:
+- Arabic words in Arabic script
+- English words in Latin script
+- Use "الـ" before English nouns (الـAPI, الـstack, الـfeature)
+- Preserve emojis, line breaks, numbered lists
 
-Input: "2. I can track all my trades (paper trading mode only now)"
-Output: "2. اقدر اتابع كل الـtrades بتاعتي (paper trading mode بس دلوقتي)"
+{_build_examples_section()}
 
-Input: "This is so funny I'm crying"
-Output: "ده funny اوي انا هموت من الضحك 😭"
+## BAD vs GOOD:
+BAD (too much English): "I've been working on this project for months"
+GOOD: "شغال على الـproject ده من شهور"
 
-Input: "Just posted a new video, check it out!"
-Output: "لسه نازل video جديد، شوفوه!"
+BAD (Fusha): "أنا سعيد جداً بهذا"
+GOOD: "انا مبسوط اوي بده"
 
-Input: "Why is everyone talking about this?"
-Output: "ليه كل الناس بتتكلم عن الموضوع ده؟"
-
-Input: "I can't believe this actually works"
-Output: "مش مصدق ان ده actually شغال"
-
-When you receive text to arabify, convert it following these guidelines while maintaining the original meaning, vibe, and technical accuracy."""
+Convert the text to Egyptian Arabic following these guidelines. Match the style of the reference examples closely."""
 
 
 arabifier_agent = Agent(
