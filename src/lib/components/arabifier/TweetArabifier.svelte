@@ -265,9 +265,9 @@
             </Card.Title>
           </Card.Header>
           <Card.Content>
-            <p class="whitespace-pre-wrap text-sm" dir="auto">
+            <div class="whitespace-pre-wrap text-sm arabified-text" dir="rtl">
               {result.arabified_text}
-            </p>
+            </div>
             {#if result.note}
               <p class="mt-4 text-xs italic text-muted-foreground">
                 Note: {result.note}
@@ -305,3 +305,17 @@
     </div>
   {/if}
 </div>
+
+<style>
+  .arabified-text {
+    /* Let each paragraph determine its own direction based on content */
+    unicode-bidi: plaintext;
+    /* Ensure proper text alignment */
+    text-align: right;
+  }
+
+  /* Ensure English segments within Arabic text render correctly */
+  .arabified-text :global(*) {
+    unicode-bidi: embed;
+  }
+</style>

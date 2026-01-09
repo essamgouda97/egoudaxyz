@@ -21,6 +21,11 @@ logger = logging.getLogger(__name__)
 # These are used as few-shot examples to guide the AI's arabification style
 # =============================================================================
 EXAMPLE_TWEETS: list[tuple[str, str]] = [
+    # Tech stack - starts with Arabic, groups English brand names together
+    (
+        "Claude code + pydantic ai + fastapi + nextjs + pydantic logfire is actually an insane stack",
+        "الـstack ده بتاع Claude code + pydantic ai + fastapi + nextjs + pydantic logfire فعلاً insane",
+    ),
     # Tech announcement - shows code-switching with Arabic sentence structure
     (
         "Just shipped a new feature that I've been working on for weeks. The API is so clean now.",
@@ -45,6 +50,11 @@ EXAMPLE_TWEETS: list[tuple[str, str]] = [
     (
         "Been working on this project for months and it's finally live! Check it out",
         "شغال على الـproject ده من شهور واخيراً live! شوفوه",
+    ),
+    # Numbered list - numbers stay at start, Arabic follows
+    (
+        "1. I can check my research bot as it thinks\n2. I can track all my trades",
+        "1. اقدر اشوف الـbot بتاعي وهو بيفكر\n2. اقدر اتابع كل الـtrades بتاعتي",
     ),
     # Add your own examples below - the more examples, the better the style matching
 ]
@@ -115,6 +125,14 @@ IMPORTANT: Convert AS MUCH AS POSSIBLE to Arabic. The output should be primarily
 - English words in Latin script
 - Use "الـ" before English nouns (الـAPI, الـstack, الـfeature)
 - Preserve emojis, line breaks, numbered lists
+
+## TEXT STRUCTURE (IMPORTANT for readability):
+- START each sentence/line with Arabic words when possible (helps RTL rendering)
+- Group English terms together rather than scattering them
+- For numbered lists: keep "1." etc at the START, followed by Arabic
+- If a line has brand names at the start, move Arabic context before them when natural
+- Example: Instead of "Claude code + pydantic ai الـstack ده"
+  → Better: "الـstack بتاع Claude code + pydantic ai ده"
 
 {_build_examples_section()}
 
