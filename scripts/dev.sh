@@ -51,15 +51,32 @@ install_deps() {
     fi
 }
 
-# Cleanup function
+# Cleanup function - kills process groups to catch all child processes
 cleanup() {
     echo -e "\n${YELLOW}Shutting down services...${NC}"
-    kill $BACKEND_PID 2>/dev/null || true
-    kill $FRONTEND_PID 2>/dev/null || true
+
+    # Kill backend and all its children (uvicorn spawns workers)
+    if [ -n "$BACKEND_PID" ]; then
+        pkill -P $BACKEND_PID 2>/dev/null || true
+        kill $BACKEND_PID 2>/dev/null || true
+    fi
+
+    # Kill frontend and all its children (vite spawns workers)
+    if [ -n "$FRONTEND_PID" ]; then
+        pkill -P $FRONTEND_PID 2>/dev/null || true
+        kill $FRONTEND_PID 2>/dev/null || true
+    fi
+
+    # Clean up any orphaned processes on our ports
+    lsof -ti:8000 | xargs kill -9 2>/dev/null || true
+    lsof -ti:5173 | xargs kill -9 2>/dev/null || true
+    lsof -ti:5174 | xargs kill -9 2>/dev/null || true
+
+    echo -e "${GREEN}All services stopped.${NC}"
     exit 0
 }
 
-trap cleanup SIGINT SIGTERM
+trap cleanup SIGINT SIGTERM EXIT
 
 check_deps
 install_deps
@@ -71,6 +88,8 @@ LOCAL=true \
   LOGFIRE_TOKEN="${PYDANTIC_LOGFIRE_KEY_EGOUDAXYZ:-}" \
   TAVILY_API_KEY="${TAVILY_API_KEY:-}" \
   FINNHUB_API_KEY="${FINNHUB_API_KEY:-}" \
+  TWITTER_BEARER_TOKEN="${TWITTER_BEARER_TOKEN:-}" \
+  PYDANTIC_AI_GATEWAY_API_KEY="${PYDANTIC_AI_GATEWAY_API_KEY:-}" \
   uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 &
 BACKEND_PID=$!
 
