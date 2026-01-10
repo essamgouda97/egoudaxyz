@@ -63,8 +63,7 @@ EXAMPLE_TWEETS: list[tuple[str, str]] = [
 class ArabifierDeps(BaseModel):
     """Dependencies for the arabifier agent."""
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = {"arbitrary_types_allowed": True}
 
 
 class ArabifiedOutput(BaseModel):

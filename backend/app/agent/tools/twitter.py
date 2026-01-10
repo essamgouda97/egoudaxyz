@@ -6,7 +6,6 @@ Uses Twitter API v2 with Bearer Token authentication.
 import logging
 import re
 import time
-from urllib.parse import urlparse
 
 import httpx
 
@@ -45,14 +44,16 @@ def extract_tweet_id(url: str) -> str | None:
 
 def _get_cached_tweet(tweet_id: str) -> dict | None:
     """Get tweet from cache if valid."""
-    if tweet_id in _tweet_cache:
-        data, timestamp = _tweet_cache[tweet_id]
-        if time.time() - timestamp < CACHE_TTL_SECONDS:
-            logger.info(f"Cache hit for tweet {tweet_id}")
-            return data
-        else:
-            # Expired, remove from cache
-            del _tweet_cache[tweet_id]
+    if tweet_id not in _tweet_cache:
+        return None
+
+    data, timestamp = _tweet_cache[tweet_id]
+    if time.time() - timestamp < CACHE_TTL_SECONDS:
+        logger.info(f"Cache hit for tweet {tweet_id}")
+        return data
+
+    # Expired, remove from cache
+    del _tweet_cache[tweet_id]
     return None
 
 

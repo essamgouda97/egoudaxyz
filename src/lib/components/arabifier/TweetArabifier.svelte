@@ -33,6 +33,7 @@
   }
 
   let tweetUrl = $state("");
+  let lastFetchedUrl = $state("");
   let loading = $state(false);
   let previewLoading = $state(false);
   let error = $state<string | null>(null);
@@ -44,7 +45,11 @@
     /(?:twitter\.com|x\.com)\/\w+\/status\/\d+/.test(tweetUrl)
   );
 
-  async function fetchPreview() {
+  function handleApiError(data: Record<string, string>, fallback: string): string {
+    return data.error || data.detail || fallback;
+  }
+
+  async function fetchPreview(): Promise<void> {
     if (!isValidTwitterUrl) return;
 
     previewLoading = true;
@@ -52,17 +57,14 @@
     preview = null;
 
     try {
-      const response = await fetch(
-        `/api/arabify?url=${encodeURIComponent(tweetUrl)}`
-      );
+      const response = await fetch(`/api/arabify?url=${encodeURIComponent(tweetUrl)}`);
       const data = await response.json();
 
-      if (!response.ok) {
-        error = data.error || data.detail || "Failed to fetch tweet";
-        return;
+      if (response.ok) {
+        preview = data;
+      } else {
+        error = handleApiError(data, "Failed to fetch tweet");
       }
-
-      preview = data;
     } catch {
       error = "Failed to connect to server";
     } finally {
@@ -70,7 +72,7 @@
     }
   }
 
-  async function arabifyTweet() {
+  async function arabifyTweet(): Promise<void> {
     if (!tweetUrl.trim()) return;
 
     loading = true;
@@ -83,15 +85,13 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: tweetUrl }),
       });
-
       const data = await response.json();
 
-      if (!response.ok) {
-        error = data.error || data.detail || "Failed to arabify tweet";
-        return;
+      if (response.ok) {
+        result = data;
+      } else {
+        error = handleApiError(data, "Failed to arabify tweet");
       }
-
-      result = data;
     } catch {
       error = "Failed to connect to server";
     } finally {
@@ -132,9 +132,6 @@
       arabifyTweet();
     }
   }
-
-  // Track if we've already fetched for this URL to prevent duplicate requests
-  let lastFetchedUrl = $state("");
 
   $effect(() => {
     if (isValidTwitterUrl && !preview && !result && tweetUrl !== lastFetchedUrl) {

@@ -51,26 +51,26 @@ install_deps() {
     fi
 }
 
+# Kill a process and its children
+kill_process_tree() {
+    local pid=$1
+    if [ -n "$pid" ]; then
+        pkill -P "$pid" 2>/dev/null || true
+        kill "$pid" 2>/dev/null || true
+    fi
+}
+
 # Cleanup function - kills process groups to catch all child processes
 cleanup() {
     echo -e "\n${YELLOW}Shutting down services...${NC}"
 
-    # Kill backend and all its children (uvicorn spawns workers)
-    if [ -n "$BACKEND_PID" ]; then
-        pkill -P $BACKEND_PID 2>/dev/null || true
-        kill $BACKEND_PID 2>/dev/null || true
-    fi
-
-    # Kill frontend and all its children (vite spawns workers)
-    if [ -n "$FRONTEND_PID" ]; then
-        pkill -P $FRONTEND_PID 2>/dev/null || true
-        kill $FRONTEND_PID 2>/dev/null || true
-    fi
+    kill_process_tree "$BACKEND_PID"
+    kill_process_tree "$FRONTEND_PID"
 
     # Clean up any orphaned processes on our ports
-    lsof -ti:8000 | xargs kill -9 2>/dev/null || true
-    lsof -ti:5173 | xargs kill -9 2>/dev/null || true
-    lsof -ti:5174 | xargs kill -9 2>/dev/null || true
+    for port in 8000 5173 5174; do
+        lsof -ti:"$port" | xargs kill -9 2>/dev/null || true
+    done
 
     echo -e "${GREEN}All services stopped.${NC}"
     exit 0
