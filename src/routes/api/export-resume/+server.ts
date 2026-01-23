@@ -1,127 +1,105 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { dev } from '$app/environment';
+import puppeteer from 'puppeteer';
 
-export const POST: RequestHandler = async ({ request, url, platform }) => {
+export const POST: RequestHandler = async ({ url }) => {
+	let browser;
 	try {
-		let browser;
-
-		if (dev) {
-			// Local development: use regular puppeteer
-			console.log('Running in dev mode - PDF export disabled in local dev');
-			return json({ error: 'PDF export only works in production with Cloudflare Browser Rendering' }, { status: 501 });
-		} else {
-			// Production: use Cloudflare Browser Rendering
-			if (!platform?.env?.BROWSER) {
-				console.error('Browser binding not available:', { platform: !!platform, env: !!platform?.env });
-				return json({ error: 'Browser rendering not configured. Please add Browser Rendering binding in Cloudflare Pages.' }, { status: 500 });
-			}
-
-			const { default: puppeteer } = await import('@cloudflare/puppeteer');
-			// Pass the BROWSER binding directly
-			browser = await puppeteer.launch(platform.env.BROWSER);
-		}
+		const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+		browser = await puppeteer.launch({
+			headless: true,
+			executablePath: executablePath || undefined,
+			args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+		});
 
 		const page = await browser.newPage();
-
-		// Get the origin from the request
 		const origin = url.origin;
-		
-		// Navigate to the dedicated resume print page
+
 		await page.goto(`${origin}/resume-print`, {
 			waitUntil: 'networkidle0',
 			timeout: 30000
 		});
 
-		// Wait for the resume section to load
 		await page.waitForSelector('[aria-label="Resume"]');
 
-		// Inject CSS for clean print output
+		// Inject print styles
 		await page.addStyleTag({
 			content: `
-				/* Force white background everywhere */
 				html, body {
 					background: white !important;
 				}
-				
-				/* Hide navbar */
+
 				header {
 					display: none !important;
 				}
-				
-				/* Hide all images except logo.png */
+
 				img:not([src="/logo.png"]) {
 					display: none !important;
 				}
-				
-				/* Keep logo visible */
+
 				img[src="/logo.png"] {
 					display: inline-block !important;
 				}
-				
-				/* Show avatar with logo */
+
 				[class*="avatar"] {
 					display: block !important;
 				}
-				
-				/* Hide export button */
-				button:has(svg[viewBox="0 0 24 24"]) {
+
+				button {
 					display: none !important;
 				}
-				
-				/* Hide accordion expand/collapse icons */
+
+				a[href*="github"] {
+					display: none !important;
+				}
+
 				[data-slot="accordion-trigger"] svg {
 					display: none !important;
 				}
-				
-				/* Make all text black for ATS */
+
 				*, h1, h2, h3, h4, h5, h6, p, li, span, div {
 					color: #000000 !important;
 				}
-				
-				/* Page break control */
+
 				[data-slot="accordion-item"] {
 					page-break-inside: avoid !important;
 					break-inside: avoid !important;
 					margin-bottom: 12px !important;
 				}
-				
+
 				h3 {
 					page-break-after: avoid !important;
 					break-after: avoid !important;
 				}
-				
-				/* Remove backgrounds */
+
 				* {
 					background: transparent !important;
 				}
-				
+
 				body, [aria-label="Resume"] {
 					background: white !important;
 				}
-				
-				/* Compact spacing */
+
 				.space-y-6 > * + * {
 					margin-top: 16px !important;
 				}
-				
+
 				.space-y-4 > * + * {
 					margin-top: 8px !important;
 				}
-				
-				/* Fix education section flex layout */
+
 				.flex.justify-between {
 					display: flex !important;
 					justify-content: space-between !important;
 					align-items: flex-start !important;
 					gap: 16px !important;
 				}
-				
+
 				.flex.justify-between p:first-child {
 					flex: 1 !important;
 					min-width: 0 !important;
 				}
-				
+
 				.flex.justify-between p:last-child {
 					white-space: nowrap !important;
 					flex-shrink: 0 !important;
@@ -130,21 +108,16 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 			`
 		});
 
-		// Open all accordions and clean up elements
+		// Open all accordions
 		await page.evaluate(() => {
-			// Open all accordion items
 			const triggers = document.querySelectorAll('[data-slot="accordion-trigger"]');
-			triggers.forEach((trigger) => {
-				(trigger as HTMLElement).click();
-			});
+			triggers.forEach((trigger) => (trigger as HTMLElement).click());
 		});
 
-		// Wait for accordions to fully expand
-		await new Promise((resolve) => setTimeout(resolve, 2000));
+		await new Promise((resolve) => setTimeout(resolve, 1000));
 
-		// Force accordion triggers to be visible and clean up buttons
+		// Clean up and prepare for print
 		await page.evaluate(() => {
-			// Force all accordion triggers to be visible
 			const triggers = document.querySelectorAll('[data-slot="accordion-trigger"]');
 			triggers.forEach((trigger) => {
 				(trigger as HTMLElement).style.setProperty('display', 'flex', 'important');
@@ -152,34 +125,19 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 				(trigger as HTMLElement).style.setProperty('opacity', '1', 'important');
 				(trigger as HTMLElement).style.marginBottom = '8px';
 			});
-			
-			// Convert email button to clickable link
+
+			// Add email as plain text
 			const emailBtn = Array.from(document.querySelectorAll('button')).find(
 				(btn) => btn.textContent?.includes('Email')
 			);
 			if (emailBtn) {
-				const link = document.createElement('a');
-				link.href = 'mailto:essamgouda97@gmail.com';
-				link.textContent = 'essamgouda97@gmail.com';
-				link.style.color = '#000000';
-				link.style.textDecoration = 'underline';
-				link.style.fontSize = '14px';
-				emailBtn.parentNode?.replaceChild(link, emailBtn);
-			}
-			
-			// Make GitHub button clean
-			const githubBtn = Array.from(document.querySelectorAll('a[href*="github"]')).find(
-				(btn) => btn.textContent?.includes('GitHub')
-			);
-			if (githubBtn) {
-				(githubBtn as HTMLElement).style.background = 'transparent';
-				(githubBtn as HTMLElement).style.border = 'none';
-				(githubBtn as HTMLElement).style.padding = '0';
-				(githubBtn as HTMLElement).style.color = '#000000';
+				const span = document.createElement('span');
+				span.textContent = 'essamgouda97@gmail.com';
+				span.style.fontSize = '14px';
+				emailBtn.parentNode?.replaceChild(span, emailBtn);
 			}
 		});
 
-		// Generate PDF
 		const pdf = await page.pdf({
 			format: 'A4',
 			printBackground: false,
@@ -195,8 +153,7 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 
 		await browser.close();
 
-		// Return the PDF as a blob
-		return new Response(pdf, {
+		return new Response(Buffer.from(pdf), {
 			headers: {
 				'Content-Type': 'application/pdf',
 				'Content-Disposition': 'attachment; filename="Essam_Gouda_Resume.pdf"'
@@ -204,6 +161,7 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 		});
 	} catch (error) {
 		console.error('PDF generation error:', error);
+		if (browser) await browser.close();
 		return json({ error: 'Failed to generate PDF' }, { status: 500 });
 	}
 };

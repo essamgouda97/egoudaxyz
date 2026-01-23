@@ -33,10 +33,7 @@
                 throw new Error("Failed to generate PDF");
             }
 
-            // Get the PDF blob
             const blob = await response.blob();
-
-            // Create a download link
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
