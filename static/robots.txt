@@ -5,8 +5,15 @@ Allow: /
 # Disallow admin/private areas
 Disallow: /dashboard
 Disallow: /login
-Disallow: /api/
 Disallow: /resume-print
+
+# Block private API routes, but allow /api/blog for AI agents
+Disallow: /api/auth/
+Disallow: /api/agents/
+Disallow: /api/reports/
+Disallow: /api/arabify/
+Disallow: /api/export-resume/
+Disallow: /api/chat/
 
 # Sitemap location
 Sitemap: https://egouda.xyz/sitemap.xml

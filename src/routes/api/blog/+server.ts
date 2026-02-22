@@ -8,6 +8,7 @@ type PostListItem = {
   description?: string;
   date?: string;
   tags?: string[] | string;
+  content?: string;
 };
 
 function toSlugFromPath(filepath: string): string {
@@ -32,7 +33,7 @@ export const GET: RequestHandler = async () => {
   }) as Record<string, string>;
 
   const parsed = Object.entries(modules).map(([filepath, raw]) => {
-    const { data } = matter(raw);
+    const { data, content } = matter(raw);
 
     const slug = toSlugFromPath(filepath);
     const title = (data?.title as string) ?? slug;
@@ -41,7 +42,7 @@ export const GET: RequestHandler = async () => {
     const date = (data?.date as string) || undefined;
     const tags = coerceTags(data?.tags);
 
-    const post: PostListItem = { slug, title, description, date, tags };
+    const post: PostListItem = { slug, title, description, date, tags, content };
     return post;
   });
 

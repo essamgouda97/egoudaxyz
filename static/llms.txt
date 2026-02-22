@@ -1,0 +1,21 @@
+# Essam Gouda — egouda.xyz
+
+Personal website and blog by Essam Gouda — software engineer, AI/ML practitioner.
+
+## Blog
+
+Blog posts are available as structured JSON for programmatic access.
+
+- Post listing (metadata): https://egouda.xyz/api/blog
+- Individual post (full markdown): https://egouda.xyz/api/blog/{slug}
+- Human-readable blog: https://egouda.xyz/blog
+
+## Pages
+
+- [Home](https://egouda.xyz/)
+- [Blog](https://egouda.xyz/blog)
+- [Portfolio](https://egouda.xyz/portfolio)
+
+## Sitemap
+
+https://egouda.xyz/sitemap.xml
