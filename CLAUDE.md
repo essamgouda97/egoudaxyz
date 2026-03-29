@@ -1,21 +1,28 @@
 # Project structure
-A monorepo with:
-- `backend`: A FastAPI backend with AG-UI compatible chat interface for AI agents (pydantic-ai)
-- `src`: SvelteKit frontend (admin dashboard)
+- `src`: SvelteKit 5 frontend (blog + portfolio)
 - `infra`: Infrastructure as code for Digital Ocean deployment (Terraform + Docker)
 - `scripts`: Development and deployment scripts
 
 # Vision
-Admin dashboard ("World") for:
-- **Monitor Agent**: Background agent that polls Reddit for news, markets, and social trends every 15 minutes
-- **Query Agent**: Chat interface to query monitoring reports stored in PostgreSQL
-- SSH sessions (future)
+Personal blog and portfolio site:
+- **Blog**: Markdown-based blog with mermaid diagrams, KaTeX math, syntax highlighting
+- **Arabic translations**: Egyptian Arabic versions of blog posts with language toggle
+- **Portfolio**: Resume and projects timeline
 
-This is a personal website so it will be simple and minimalistic and no need to overcomplicate it, plus keep it cheap
+Simple, minimalistic, cheap to run.
+
+# Design System
+- **Fonts**: Space Grotesk (English), Cairo (Arabic)
+- **Theme**: "Space Dark" (deep navy) + "Beige" (warm cream) — see `src/app.css`
+- **Components**: shadcn-svelte (bits-ui) — button, badge, card, navigation-menu, sonner
+- **Blog styles**: Custom `article.prose` class in `src/app.css` with RTL support
+
+# Claude Code Skills
+- `/blog new "title"` or `/blog edit slug` — Blog writing assistant
+- `/arabify slug` — Translate blog post to Egyptian Arabic
 
 # Do
 - Minimal boilerplate changes, you are my principal staff pair programmer
-- For python projects utilize `uv` always
 - For frontend projects utilize `npm` always
 - For very big changes ensure to write boilerplate code only and a CHANGELOG.md entry so I can review the changes and further develop the project
 - Always assume you are writing production code, for development purposes utilize a local flag for local development
@@ -29,7 +36,6 @@ This is a personal website so it will be simple and minimalistic and no need to 
 
 ```bash
 make help        # Show all available commands
-make db-setup    # Create local PostgreSQL (first time)
 make install     # Install dependencies
 make dev         # Start local development
 ```
@@ -37,23 +43,14 @@ make dev         # Start local development
 # Local Development
 
 ## Prerequisites
-- PostgreSQL running locally (Homebrew: `brew services start postgresql`)
 - Node.js and npm
-- Python 3.11+ and uv
-
-## Environment Variables (in ~/.zshrc)
-```bash
-export PYDANTIC_AI_GATEWAY_API_KEY="your-key"
-export PYDANTIC_LOGFIRE_KEY_EGOUDAXYZ="your-logfire-token"
-```
 
 ## Makefile Commands
 
 | Command | Description |
 |---------|-------------|
-| `make dev` | Start local development servers |
+| `make dev` | Start local development server |
 | `make install` | Install all dependencies |
-| `make db-setup` | Create local PostgreSQL role and database |
 | `make clean` | Clean build artifacts and caches |
 | `make sync-env` | Sync local env vars to DigitalOcean server |
 | `make deploy` | Deploy code to DigitalOcean |
@@ -63,12 +60,17 @@ export PYDANTIC_LOGFIRE_KEY_EGOUDAXYZ="your-logfire-token"
 | `make infra` | Create DigitalOcean droplet |
 | `make destroy` | Destroy DigitalOcean droplet |
 
+# Blog Architecture
+- Posts: `src/lib/blog/*.md` (gray-matter frontmatter)
+- Arabic translations: `src/lib/blog/ar/*.md`
+- Rendering: markdown-it + KaTeX + highlight.js + mermaid (client-side)
+- API: `/api/blog` (list), `/api/blog/[slug]` (single post)
+- Language toggle on posts with Arabic translations
+
 # Deployment
 
 Single Digital Ocean droplet (~$6/month) with Docker:
 - Frontend (SvelteKit SSR)
-- Backend (FastAPI) - internal only, not publicly exposed
-- PostgreSQL container
 - Caddy reverse proxy with auto-SSL
 - DNS via Cloudflare
 
@@ -83,23 +85,33 @@ make infra
 
 # 3. Add DNS record in Cloudflare: @ → droplet IP
 
-# 4. Sync environment variables from local machine
-make sync-env
-
-# 5. Setup and start services
+# 4. Setup and start services
 make setup
 ```
 
 ## Deploying Updates
 ```bash
-make sync-env    # If env vars changed
 make deploy      # Push code and restart
 make logs        # Verify deployment
 ```
 
-# Observability
+# CI/CD (GitHub Actions)
 
-Agent runs are tracked in [Pydantic Logfire](https://logfire.pydantic.dev/). The `PYDANTIC_LOGFIRE_KEY_EGOUDAXYZ` env var is automatically synced to the server via `make sync-env`.
+Auto-deploys on merge to `main` using Docker Hub + Watchtower:
+1. GitHub Actions builds and pushes `essamgouda/egoudaxyz:frontend`
+2. Watchtower on the server auto-pulls new images every 60 seconds
+
+## Required GitHub Secrets
+
+| Secret | How to get it |
+|--------|---------------|
+| `DOCKERHUB_USERNAME` | Your Docker Hub username (e.g., `essamgouda`) |
+| `DOCKERHUB_TOKEN` | Docker Hub → Account Settings → Security → New Access Token |
+
+## How It Works
+- No SSH keys or server access needed in CI
+- Images are public on Docker Hub
+- Watchtower watches for new image tags and restarts containers automatically
 
 # SEO & Cloudflare Configuration
 
@@ -107,15 +119,6 @@ Agent runs are tracked in [Pydantic Logfire](https://logfire.pydantic.dev/). The
 - `/static/robots.txt` - Crawler rules, sitemap reference
 - `/sitemap.xml` - Dynamic sitemap (generated from pages + blog posts)
 - `/static/og-image.svg` - Open Graph image template (convert to PNG for production)
-
-## Generate OG Image
-Convert the SVG to PNG (1200x630):
-```bash
-# Using ImageMagick
-convert static/og-image.svg -resize 1200x630 static/og-image.png
-
-# Or use online tool: https://svgtopng.com
-```
 
 ## Cloudflare Dashboard Settings
 
@@ -184,7 +187,6 @@ Speed → Optimization:
   - Auto Minify: JS, CSS, HTML (all checked)
   - Brotli: ON
   - Early Hints: ON
-  - Rocket Loader: ON (test first, can break some JS)
 
 Caching → Configuration:
   - Browser Cache TTL: 1 month
@@ -204,42 +206,8 @@ Headers to add:
   - X-XSS-Protection: 1; mode=block
 ```
 
-### 7. Page Rules (Optional)
-```
-URL: egouda.xyz/api/*
-Settings:
-  - Cache Level: Bypass
-  - Security Level: High
-```
-
 ## Google Search Console
 1. Go to https://search.google.com/search-console
 2. Add property: egouda.xyz
 3. Verify via DNS (add TXT record in Cloudflare)
 4. Submit sitemap: https://egouda.xyz/sitemap.xml
-
-# CI/CD (GitHub Actions)
-
-Auto-deploys on merge to `main` using Docker Hub + Watchtower:
-1. GitHub Actions builds and pushes images to `essamgouda/egoudaxyz:frontend` and `essamgouda/egoudaxyz:backend`
-2. Watchtower on the server auto-pulls new images every 60 seconds
-
-## Required GitHub Secrets
-
-Go to: **Repository → Settings → Secrets and variables → Actions → New repository secret**
-
-| Secret | How to get it |
-|--------|---------------|
-| `DOCKERHUB_USERNAME` | Your Docker Hub username (e.g., `essamgouda`) |
-| `DOCKERHUB_TOKEN` | Docker Hub → Account Settings → Security → New Access Token |
-| `CONVEX_DEPLOY_KEY` | Convex Dashboard → Settings → Deploy Key |
-| `PUBLIC_CONVEX_URL` | Convex Dashboard → Settings (e.g., `https://xxx.convex.cloud`) |
-| `PUBLIC_CONVEX_SITE_URL` | Convex Dashboard → Settings (e.g., `https://xxx.convex.site`) |
-
-## How It Works
-- No SSH keys or server access needed in CI
-- Images are public on Docker Hub
-- Watchtower watches for new image tags and restarts containers automatically
-
-## Manual Trigger
-You can also trigger deploys manually from GitHub Actions tab → Deploy to DigitalOcean → Run workflow

@@ -70,13 +70,93 @@ function normalizeDate(input: unknown): string | undefined {
  * Note: dynamic imports are used to avoid TypeScript type issues for these libs
  * in environments without their type declarations installed.
  */
+/**
+ * markdown-it plugin for KaTeX math using the modern katex package.
+ * Handles both inline ($...$) and display ($$...$$) math.
+ * katexLib must be passed in since we can't use require() in ESM.
+ */
+function mathPlugin(md: any, katexLib: any) {
+  // Inline math: $...$
+  md.inline.ruler.after("escape", "math_inline", (state: any, silent: boolean) => {
+    if (state.src[state.pos] !== "$") return false;
+    // Don't match $$
+    if (state.src[state.pos + 1] === "$") return false;
+
+    const start = state.pos + 1;
+    let end = start;
+    while (end < state.posMax && state.src[end] !== "$") {
+      if (state.src[end] === "\\") end++; // skip escaped chars
+      end++;
+    }
+    if (end >= state.posMax) return false;
+
+    if (!silent) {
+      const token = state.push("math_inline", "math", 0);
+      token.markup = "$";
+      token.content = state.src.slice(start, end);
+    }
+    state.pos = end + 1;
+    return true;
+  });
+
+  // Display math: $$...$$
+  md.block.ruler.after("blockquote", "math_block", (state: any, startLine: number, endLine: number, silent: boolean) => {
+    const startPos = state.bMarks[startLine] + state.tShift[startLine];
+    if (startPos + 2 > state.eMarks[startLine]) return false;
+    if (state.src.slice(startPos, startPos + 2) !== "$$") return false;
+
+    if (silent) return true;
+
+    let nextLine = startLine;
+    let found = false;
+    while (++nextLine < endLine) {
+      const lineStart = state.bMarks[nextLine] + state.tShift[nextLine];
+      const lineEnd = state.eMarks[nextLine];
+      const line = state.src.slice(lineStart, lineEnd).trim();
+      if (line === "$$") {
+        found = true;
+        break;
+      }
+    }
+    if (!found) return false;
+
+    const token = state.push("math_block", "math", 0);
+    token.block = true;
+    token.content = state.getLines(startLine + 1, nextLine, state.tShift[startLine], true).trim();
+    token.map = [startLine, nextLine + 1];
+    token.markup = "$$";
+    state.line = nextLine + 1;
+    return true;
+  });
+
+  md.renderer.rules.math_inline = (tokens: any[], idx: number) => {
+    const katex = katexLib;
+    try {
+      return katex.renderToString(tokens[idx].content, { throwOnError: false });
+    } catch {
+      return `<code>${md.utils.escapeHtml(tokens[idx].content)}</code>`;
+    }
+  };
+
+  md.renderer.rules.math_block = (tokens: any[], idx: number) => {
+    const katex = katexLib;
+    try {
+      return `<div class="katex-display">${katex.renderToString(tokens[idx].content, { displayMode: true, throwOnError: false })}</div>`;
+    } catch {
+      return `<pre><code>${md.utils.escapeHtml(tokens[idx].content)}</code></pre>`;
+    }
+  };
+}
+
 async function createMarkdownRenderer() {
-  const [{ default: MarkdownIt }, { default: katex }, hljsMod] =
+  const [{ default: MarkdownIt }, hljsMod, katexMod] =
     await Promise.all([
       import("markdown-it"),
-      import("markdown-it-katex"),
       import("highlight.js"),
+      import("katex"),
     ]);
+
+  const katexLib = (katexMod as any).default ?? katexMod;
 
   // Some bundlers expose highlight.js under default, others not
   const hljs = (hljsMod as any).default ?? hljsMod;
@@ -86,6 +166,10 @@ async function createMarkdownRenderer() {
     linkify: true,
     breaks: false,
     highlight(str: string, lang?: string) {
+      // Mermaid: output raw content in a div for client-side rendering
+      if (lang === "mermaid") {
+        return `<div class="mermaid">${(md as any).utils.escapeHtml(str)}</div>`;
+      }
       try {
         if (lang && hljs.getLanguage(lang)) {
           return `<pre><code class="hljs language-${lang}">${hljs.highlight(str, { language: lang }).value}</code></pre>`;
@@ -94,11 +178,12 @@ async function createMarkdownRenderer() {
         return `<pre><code class="hljs">${hljs.highlightAuto(str).value}</code></pre>`;
       } catch {
         // Fallback
-        // md.utils.escapeHtml is available on the instance
         return `<pre><code>${(md as any).utils.escapeHtml(str)}</code></pre>`;
       }
     },
-  }).use(katex as any);
+  });
+
+  mathPlugin(md, katexLib);
 
   // Rewrite relative image sources to /blog/<path>
   const defaultImageRule =
@@ -183,13 +268,42 @@ export const load: PageServerLoad = async ({ params }) => {
         ? Math.max(1, Math.ceil(Number((fm as any).readingTime)))
         : estimateReadingTime(mdContent);
 
+  // Check for Arabic translation
+  const arModules = import.meta.glob("/src/lib/blog/ar/*.md", {
+    query: "?raw",
+    import: "default",
+    eager: true,
+  }) as Record<string, string>;
+
+  const arMatch = Object.entries(arModules).find(([fp]) =>
+    fp.endsWith(`/${safeSlug}.md`),
+  );
+
+  let contentAr: string | null = null;
+  let titleAr: string | null = null;
+  let hasArabic = false;
+
+  if (arMatch) {
+    try {
+      const { data: arFm, content: arMdContent } = matter(arMatch[1]);
+      contentAr = md.render(arMdContent);
+      titleAr = (arFm?.title as string) || null;
+      hasArabic = true;
+    } catch {
+      // Arabic version failed to render, skip it
+    }
+  }
+
   return {
     slug: safeSlug,
     title,
+    titleAr,
     description,
     date,
     tags,
     readingTime,
     content: html,
+    contentAr,
+    hasArabic,
   };
 };

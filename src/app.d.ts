@@ -1,8 +1,6 @@
 declare global {
   namespace App {
-    interface Locals {
-      token: string | undefined;
-    }
+    // No custom locals needed
   }
 }
 

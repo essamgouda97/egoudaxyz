@@ -40,7 +40,7 @@ export const GET: RequestHandler = async () => {
     };
   });
 
-  const allPages = [...staticPages, ...blogPosts];
+  const allPages: Array<{ path: string; priority: number; changefreq: string; lastmod?: string }> = [...staticPages, ...blogPosts];
   const today = new Date().toISOString().split('T')[0];
 
   const sitemap = `<?xml version="1.0" encoding="UTF-8"?>

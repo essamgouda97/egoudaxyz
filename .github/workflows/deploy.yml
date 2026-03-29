@@ -24,7 +24,6 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # Build and push frontend image
       - name: Build and push frontend
         uses: docker/build-push-action@v5
         with:
@@ -33,47 +32,7 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: ${{ env.DOCKERHUB_REPO }}:frontend
-          build-args: |
-            PUBLIC_CONVEX_URL=${{ secrets.PUBLIC_CONVEX_URL }}
-            PUBLIC_CONVEX_SITE_URL=${{ secrets.PUBLIC_CONVEX_SITE_URL }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-      # Build and push backend image
-      - name: Build and push backend
-        uses: docker/build-push-action@v5
-        with:
-          context: backend
-          file: infra/docker/Dockerfile.backend
-          platforms: linux/amd64
-          push: true
-          tags: ${{ env.DOCKERHUB_REPO }}:backend
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      # Deploy Convex functions
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-
-      - name: Verify Node version
-        run: |
-          node --version
-          npm --version
-          which node
-          which npm
-
-      - name: Install dependencies
-        run: |
-          # Ensure we're using the right node version
-          export PATH="$(dirname $(which node)):$PATH"
-          npm ci --engine-strict=false
-
-      - name: Deploy Convex
-        run: npx convex deploy -y
-        env:
-          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
 
       # Watchtower on server will auto-pull new images within 60 seconds

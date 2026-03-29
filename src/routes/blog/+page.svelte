@@ -32,7 +32,12 @@
                         data-sveltekit-preload-data="hover"
                         class="block hover:underline"
                     >
-                        <h2 class="text-xl font-semibold">{post.title}</h2>
+                        <h2 class="text-xl font-semibold">
+                            {post.title}
+                            {#if post.hasArabic}
+                                <span class="inline-block ml-2 px-1.5 py-0.5 text-[10px] font-medium rounded bg-muted text-muted-foreground align-middle">AR</span>
+                            {/if}
+                        </h2>
                     </a>
 
                     <div

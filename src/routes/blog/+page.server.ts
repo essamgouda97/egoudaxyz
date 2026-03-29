@@ -8,6 +8,7 @@ type PostListItem = {
   date?: string;
   tags: string[];
   readingTime: number;
+  hasArabic: boolean;
 };
 
 /**
@@ -105,7 +106,7 @@ export const load: PageServerLoad = async () => {
         readingTime = Math.max(1, Math.ceil(Number(fm.readingTime)));
       }
 
-      return { slug, title, description, date, tags, readingTime };
+      return { slug, title, description, date, tags, readingTime, hasArabic: false };
     })
     // Filter out any malformed entries just in case
     .filter((p) => Boolean(p?.slug && p?.title))
@@ -115,6 +116,23 @@ export const load: PageServerLoad = async () => {
       const tb = b.date ? Date.parse(b.date) : 0;
       return tb - ta;
     });
+
+  // Check which posts have Arabic translations
+  const arModules = import.meta.glob("/src/lib/blog/ar/*.md", {
+    query: "?raw",
+    import: "default",
+    eager: true,
+  }) as Record<string, string>;
+
+  const arSlugs = new Set(
+    Object.keys(arModules).map((fp) =>
+      (fp.split("/").pop() ?? "").replace(/\.md$/i, ""),
+    ),
+  );
+
+  for (const post of posts) {
+    post.hasArabic = arSlugs.has(post.slug);
+  }
 
   return { posts };
 };
