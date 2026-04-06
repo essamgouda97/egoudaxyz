@@ -49,7 +49,7 @@ Not all sources are equal. The agent treats them differently:
 | Parliament | Manual curation | High — but stale (JS SPA) |
 | Constitution | Static | Highest — changes need referendum |
 
-Validation is deterministic. Budget items must sum to the total (±0.01). Parliament must have exactly 596 House + 300 Senate members. Debt-to-GDP ratios must stay under 200%. If validation fails, the update is rejected and flagged.
+Validation is deterministic. Budget items must sum to the total (±0.01). Parliament must have exactly 596 House + 300 Senate members. Debt-to-GDP ratios must stay under 200% (AI must be hallucinating... right?). If validation fails, the update is rejected and flagged.
 
 ## The LLM Council — isnad for the modern age
 
