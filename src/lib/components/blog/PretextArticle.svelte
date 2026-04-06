@@ -1,5 +1,6 @@
 <script lang="ts">
     import { onMount } from "svelte";
+    import { mode } from "mode-watcher";
 
     let {
         content,
@@ -110,6 +111,28 @@
             }
         }
     }
+
+    function syncExcalidrawTheme() {
+        if (!articleEl) return;
+        const iframes = articleEl.querySelectorAll<HTMLIFrameElement>('iframe[src*="excalidraw.com"]');
+        const isDark = mode.current === "dark";
+        for (const iframe of iframes) {
+            const url = new URL(iframe.src);
+            if (isDark) {
+                url.searchParams.set("darkMode", "true");
+            } else {
+                url.searchParams.delete("darkMode");
+            }
+            if (iframe.src !== url.toString()) {
+                iframe.src = url.toString();
+            }
+        }
+    }
+
+    $effect(() => {
+        mode.current;
+        syncExcalidrawTheme();
+    });
 
     async function initMermaid() {
         if (!articleEl) return;
