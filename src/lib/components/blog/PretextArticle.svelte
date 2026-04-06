@@ -1,6 +1,7 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { mode } from "mode-watcher";
+    import { readingPrefs } from "$lib/stores/reading.svelte";
 
     let {
         content,
@@ -16,6 +17,10 @@
 
     const FOCUS_LINE = 0.4;
 
+    // Line geometry for hide mode
+    type LineGeo = { y: number; width: number; height: number };
+    const blockLines = new WeakMap<HTMLElement, LineGeo[]>();
+
     onMount(() => {
         if (!articleEl) return;
 
@@ -28,25 +33,23 @@
             ),
         );
 
-        // Store base font sizes and pre-measure with Pretext
         for (const block of blocks) {
             const s = getComputedStyle(block);
-            block.dataset.baseFontSize = s.fontSize; // e.g. "16px"
+            block.dataset.baseFontSize = s.fontSize;
         }
 
-        import("@chenglou/pretext").then(({ prepare, layout }) => {
+        import("@chenglou/pretext").then(({ prepare, layout, prepareWithSegments, layoutWithLines }) => {
             for (const block of blocks) {
                 const text = block.textContent || "";
                 if (text.length < 5) continue;
                 try {
                     const s = getComputedStyle(block);
                     const basePx = parseFloat(s.fontSize) || 16;
-                    const focusPx = basePx * 1.06; // 6% larger when focused
+                    const focusPx = basePx * 1.06;
                     const font = s.font;
                     const lh = parseFloat(s.lineHeight) || 28;
                     const w = block.clientWidth || 600;
 
-                    // Measure at both sizes so we know the layout won't break
                     const focusFont = font.replace(`${basePx}px`, `${focusPx}px`);
                     const baseResult = layout(prepare(text, font), w, lh);
                     const focusResult = layout(prepare(text, focusFont), w, lh * 1.06);
@@ -54,6 +57,18 @@
                     block.dataset.lines = String(baseResult.lineCount);
                     block.dataset.focusLines = String(focusResult.lineCount);
                     block.dataset.focusFontSize = `${focusPx}px`;
+
+                    // Pre-compute line geometry for hide mode
+                    try {
+                        const prepared = prepareWithSegments(text, font);
+                        const result = layoutWithLines(prepared, w, lh);
+                        const lines: LineGeo[] = result.lines.map((line: { width: number }, idx: number) => ({
+                            y: idx * lh,
+                            width: Math.min(line.width, w),
+                            height: lh * 0.65,
+                        }));
+                        blockLines.set(block, lines);
+                    } catch { /* hide mode just won't have accurate bars */ }
                 } catch { /* skip */ }
             }
         });
@@ -65,7 +80,6 @@
         };
 
         window.addEventListener("scroll", onScroll, { passive: true });
-        // Run immediately + after fly transition settles
         tick(blocks);
         requestAnimationFrame(() => tick(blocks));
         setTimeout(() => tick(blocks), 200);
@@ -77,10 +91,23 @@
         };
     });
 
+    // Re-run tick when focus style changes
+    $effect(() => {
+        readingPrefs.focusStyle;
+        if (!articleEl) return;
+        const blocks = Array.from(
+            articleEl.querySelectorAll<HTMLElement>(
+                "p, li, h1, h2, h3, h4, h5, h6, pre, blockquote, figure, .pretext-figure, .mermaid, .katex-display, hr",
+            ),
+        );
+        tick(blocks);
+    });
+
     function tick(blocks: HTMLElement[]) {
         const vh = window.innerHeight;
         const focusY = vh * FOCUS_LINE;
         const range = vh * 0.35;
+        const style = readingPrefs.focusStyle;
 
         for (const block of blocks) {
             const rect = block.getBoundingClientRect();
@@ -95,19 +122,59 @@
             const t = Math.min(dist / range, 1);
             const ease = t * t;
 
-            // Opacity: 1.0 → 0.4
-            block.style.opacity = String(1 - ease * 0.6);
-
-            // Font size: interpolate between focus size and base size
-            // Only for text blocks (not code, images, math)
             const basePx = parseFloat(block.dataset.baseFontSize || "0");
             const focusPx = parseFloat(block.dataset.focusFontSize || "0");
             const isText = block.tagName === "P" || block.tagName === "LI" ||
                            block.tagName === "BLOCKQUOTE";
 
-            if (isText && basePx > 0 && focusPx > 0) {
-                const size = focusPx - ease * (focusPx - basePx);
-                block.style.fontSize = `${size}px`;
+            // Reset styles
+            block.style.opacity = "";
+            block.style.fontSize = "";
+            block.style.fontWeight = "";
+            block.style.color = "";
+
+            // Remove existing hide bars
+            const existingOverlay = block.querySelector(".hide-overlay");
+            if (existingOverlay) existingOverlay.remove();
+
+            if (style === "off") continue;
+
+            if (style === "dim") {
+                block.style.opacity = String(1 - ease * 0.6);
+                if (isText && basePx > 0 && focusPx > 0) {
+                    const size = focusPx - ease * (focusPx - basePx);
+                    block.style.fontSize = `${size}px`;
+                }
+            } else if (style === "highlight") {
+                block.style.opacity = String(1 - ease * 0.7);
+                if (ease < 0.1 && isText) {
+                    block.style.fontWeight = "600";
+                }
+            } else if (style === "hide") {
+                if (ease > 0.15) {
+                    // Hide: overlay gray bars on unfocused blocks
+                    block.style.color = "transparent";
+                    const lines = blockLines.get(block);
+                    if (lines && lines.length > 0) {
+                        if (!block.style.position || block.style.position === "static") {
+                            block.style.position = "relative";
+                        }
+                        const overlay = document.createElement("div");
+                        overlay.className = "hide-overlay";
+                        overlay.style.cssText = "position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;";
+                        for (const line of lines) {
+                            const bar = document.createElement("div");
+                            bar.style.cssText = `position:absolute;top:${line.y + line.height * 0.25}px;${dir === "rtl" ? "right" : "left"}:0;width:${line.width}px;height:${line.height}px;background:var(--muted-foreground);opacity:0.2;border-radius:3px;`;
+                            overlay.appendChild(bar);
+                        }
+                        block.appendChild(overlay);
+                    } else {
+                        block.style.opacity = "0.08";
+                        block.style.color = "";
+                    }
+                } else {
+                    block.style.opacity = "1";
+                }
             }
         }
     }
@@ -211,6 +278,6 @@
     .pretext-article :global(.mermaid),
     .pretext-article :global(.katex-display),
     .pretext-article :global(hr) {
-        transition: opacity 0.15s ease-out, font-size 0.2s ease-out;
+        transition: opacity 0.15s ease-out, font-size 0.2s ease-out, color 0.15s ease-out, font-weight 0.15s ease-out;
     }
 </style>

@@ -1,5 +1,5 @@
 ---
-title: 'Mizan masr: a data visual layer'
+title: 'Mizan: AI data visual layer'
 date: '2026-04-06'
 description: 'Building a civic transparency platform for Egyptian government data — budget, debt, parliament, constitution — all cited, all open.'
 tags: [mizan, civic-tech, egypt, open-data]
