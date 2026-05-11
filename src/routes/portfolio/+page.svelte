@@ -23,10 +23,10 @@
     <meta name="twitter:image" content="https://egouda.xyz/og-image.png" />
 </svelte:head>
 
-<div class="w-full h-[calc(100vh-4rem)]">
-    <div class="md:hidden flex flex-col h-full overflow-y-auto">
-        <ResumePane className="min-h-screen" />
-        <ProjectsTimelinePane className="min-h-screen" />
+<div class="w-full md:h-[calc(100vh-4rem)]">
+    <div class="flex flex-col md:hidden">
+        <ResumePane scrollable={false} />
+        <ProjectsTimelinePane scrollable={false} />
     </div>
     
     <div class="hidden md:block h-full">

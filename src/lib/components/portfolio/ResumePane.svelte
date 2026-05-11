@@ -12,8 +12,9 @@
      *
      * Props:
      * - className: append your own classes to customize the container.
+     * - scrollable: when false, lets the page own vertical scrolling.
      */
-    let { className = "", ...restProps }: { className?: string; [key: string]: any } = $props();
+    let { className = "", scrollable = true, ...restProps }: { className?: string; scrollable?: boolean; [key: string]: any } = $props();
 
     const currentYear = new Date().getFullYear();
     const yearsOfExperience = currentYear - 2019;
@@ -55,7 +56,7 @@
 
 <section
     aria-label="Resume"
-    class={`h-full w-full overflow-auto ${className}`}
+    class={`w-full ${scrollable ? "h-full overflow-auto" : ""} ${className}`}
     {...restProps}
 >
     <!-- Main resume content area -->
