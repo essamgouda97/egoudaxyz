@@ -213,18 +213,22 @@
                             class="list-disc space-y-2 pl-6 text-muted-foreground"
                         >
                             <li>
-                                Built agentic workflows using Pydantic AI for
-                                automated tasks
+                                Building multi-agent systems and agentic
+                                workflows for internal automation and product
+                                workflows
                             </li>
                             <li>
-                                Designed evaluation pipelines for 3D/2D model
-                                similarity and retrieval using OpenSearch vector
-                                database
+                                Developing ML pipelines for 2D/3D model
+                                similarity, evaluation, and retrieval across
+                                OpenSearch and turbopuffer
                             </li>
                         </ul>
                         <div class="flex flex-wrap gap-2">
                             <Badge variant="secondary">Pydantic AI</Badge>
+                            <Badge variant="secondary">Multi-agent Systems</Badge>
+                            <Badge variant="secondary">ML Pipelines</Badge>
                             <Badge variant="secondary">OpenSearch</Badge>
+                            <Badge variant="secondary">turbopuffer</Badge>
                             <Badge variant="secondary">Vector DB</Badge>
                         </div>
                     </div>

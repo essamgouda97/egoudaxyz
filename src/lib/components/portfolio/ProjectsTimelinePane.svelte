@@ -24,7 +24,14 @@
         {
             title: "Dispatcher Agent",
             description:
-                "Creating a truck dispatcher agentic workflow for truck companies.",
+                "Explored a truck dispatcher agentic workflow for truck companies.",
+            status: "failed" as const,
+            year: 2026,
+        },
+        {
+            title: "Compound App",
+            description:
+                "Creating a compound management system for operations, residents, and administration workflows.",
             status: "in-progress" as const,
             year: 2026,
         },
