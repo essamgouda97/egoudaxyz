@@ -163,19 +163,40 @@
         >
             Education
         </h3>
-        <div class="space-y-4">
-            <div class="flex justify-between text-muted-foreground text-lg">
-                <p>
-                    <b>MEng in Computer Engineering</b>, University of Alberta
+        <div class="divide-y divide-border rounded-md border border-border">
+            <div
+                class="grid gap-2 px-4 py-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-start md:gap-x-6"
+            >
+                <div class="min-w-0">
+                    <p class="font-semibold leading-snug text-foreground">
+                        MEng in Computer Engineering
+                    </p>
+                    <p class="mt-1 text-muted-foreground">
+                        University of Alberta
+                    </p>
+                </div>
+                <p
+                    class="whitespace-nowrap text-sm font-medium text-muted-foreground md:pt-0.5 md:text-right"
+                >
+                    2018 - 2021
                 </p>
-                <p>2018 - 2021</p>
             </div>
-            <div class="flex justify-between text-muted-foreground text-lg">
-                <p>
-                    <b>BEng in Electrical and Electronics Engineering</b>,
-                    University of Nottingham
+            <div
+                class="grid gap-2 px-4 py-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-start md:gap-x-6"
+            >
+                <div class="min-w-0">
+                    <p class="font-semibold leading-snug text-foreground">
+                        BEng in Electrical and Electronics Engineering
+                    </p>
+                    <p class="mt-1 text-muted-foreground">
+                        University of Nottingham
+                    </p>
+                </div>
+                <p
+                    class="whitespace-nowrap text-sm font-medium text-muted-foreground md:pt-0.5 md:text-right"
+                >
+                    2015 - 2018
                 </p>
-                <p>2015 - 2018</p>
             </div>
         </div>
         <h3
