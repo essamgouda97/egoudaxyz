@@ -1,5 +1,6 @@
 <script lang="ts">
-    import { toggleMode, mode } from "mode-watcher";
+    import { mode, setMode } from "mode-watcher";
+    import { replaceState } from "$app/navigation";
     import { readingPrefs, type FocusStyle } from "$lib/stores/reading.svelte";
     import {
         servicesLanguage,
@@ -23,6 +24,39 @@
         { value: "en", label: "EN" },
         { value: "ar", label: "عربي" },
     ];
+    type ThemeMode = "light" | "dark";
+
+    function currentThemeParam() {
+        const queryTheme = new URL(window.location.href).searchParams.get("theme");
+        if (
+            queryTheme === "light" ||
+            queryTheme === "dark" ||
+            queryTheme === "system"
+        ) {
+            return queryTheme;
+        }
+
+        return mode.current === "dark" ? "dark" : "light";
+    }
+
+    function updateServiceUrl(params: { lang?: ServicesLanguage; theme?: ThemeMode }) {
+        if (!browser || !isServicesPage) return;
+
+        const url = new URL(window.location.href);
+        url.searchParams.set("lang", params.lang ?? servicesLanguage.current);
+        url.searchParams.set("theme", params.theme ?? currentThemeParam());
+        replaceState(url, page.state);
+    }
+
+    function selectTheme(value: ThemeMode) {
+        setMode(value);
+        updateServiceUrl({ theme: value });
+    }
+
+    function selectLanguage(value: ServicesLanguage) {
+        servicesLanguage.current = value;
+        updateServiceUrl({ lang: value });
+    }
 
     function handleKeydown(e: KeyboardEvent) {
         if (e.key === "Escape" && open) open = false;
@@ -82,7 +116,7 @@
                     <button
                         class="toggle-btn"
                         class:active={mode.current === "light"}
-                        onclick={toggleMode}
+                        onclick={() => selectTheme("light")}
                         aria-label="Light mode"
                     >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -92,7 +126,7 @@
                     <button
                         class="toggle-btn"
                         class:active={mode.current === "dark"}
-                        onclick={toggleMode}
+                        onclick={() => selectTheme("dark")}
                         aria-label="Dark mode"
                     >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -110,7 +144,7 @@
                             <button
                                 class="toggle-btn"
                                 class:active={servicesLanguage.current === opt.value}
-                                onclick={() => (servicesLanguage.current = opt.value)}
+                                onclick={() => selectLanguage(opt.value)}
                             >
                                 {opt.label}
                             </button>

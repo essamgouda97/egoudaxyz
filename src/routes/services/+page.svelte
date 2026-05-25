@@ -536,38 +536,84 @@
 
     <ol
         aria-label="Brief workflow"
-        class="flex flex-col gap-3 border-y py-4 text-card-foreground md:flex-row md:items-stretch"
+        class="grid min-w-0 gap-3 border-y py-4 text-card-foreground md:auto-rows-fr md:grid-cols-4 md:gap-6"
     >
         {#each workflowSteps as step, index}
             {@const StepIcon = step.icon}
-            <li
-                class="flex min-h-20 flex-1 flex-col items-center justify-center gap-2 rounded-2xl border bg-card/60 px-4 py-3 text-center"
-            >
-                <span class="flex min-w-0 items-baseline justify-center gap-2">
-                    <span class="text-base font-semibold leading-none text-muted-foreground">
-                        0{index + 1}
-                    </span>
-                    <span class="whitespace-nowrap text-base font-semibold leading-none">
-                        {selectedCopy.workflow[index]}
-                    </span>
-                </span>
-                <span class="grid size-8 shrink-0 place-items-center text-primary">
-                    <StepIcon class="size-5" />
-                </span>
-            </li>
+            <li class="relative flex min-w-0 flex-col items-center gap-3">
+                <div
+                    dir="ltr"
+                    class={`grid h-full min-h-24 w-full min-w-0 overflow-hidden rounded-2xl border bg-card/60 ${
+                        selectedLanguage === "ar"
+                            ? "grid-cols-[1fr_4rem]"
+                            : "grid-cols-[4.75rem_1fr]"
+                    }`}
+                >
+                    <div
+                        class={`flex flex-col items-center justify-center gap-2 text-primary ${
+                            selectedLanguage === "ar"
+                                ? "order-2 bg-gradient-to-l from-primary/10 via-primary/5 to-transparent"
+                                : "order-1 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent"
+                        }`}
+                    >
+                        <span dir="ltr" class="text-lg font-semibold leading-none text-muted-foreground tabular-nums">
+                            0{index + 1}
+                        </span>
+                        <StepIcon class="size-5" />
+                    </div>
+                    <div
+                        class={`flex min-w-0 items-center ${
+                            selectedLanguage === "ar"
+                                ? "order-1 justify-start py-4 pl-8 pr-2 text-right"
+                                : "order-2 justify-end py-4 pl-2 pr-8 text-left"
+                        }`}
+                    >
+                        {#if selectedCopy.workflow[index].includes("&")}
+                            <span
+                                class={`flex min-w-0 max-w-[7rem] flex-col text-lg font-semibold leading-tight ${
+                                    selectedLanguage === "ar"
+                                        ? "items-start text-right"
+                                        : "items-center text-center"
+                                }`}
+                                dir={selectedCopy.dir}
+                            >
+                                {#each selectedCopy.workflow[index].split(" ") as word}
+                                    <span>{word}</span>
+                                {/each}
+                            </span>
+                        {:else}
+                            <span
+                                class={`min-w-0 max-w-[7rem] whitespace-normal break-normal font-semibold leading-tight [overflow-wrap:normal] ${
+                                    selectedLanguage === "ar"
+                                        ? "text-right text-base md:text-[1.05rem]"
+                                        : "text-left text-lg"
+                                }`}
+                                dir={selectedCopy.dir}
+                            >
+                                {selectedCopy.workflow[index]}
+                            </span>
+                        {/if}
+                    </div>
+                </div>
 
-            {#if index < workflowSteps.length - 1}
-                <li aria-hidden="true" class="grid place-items-center text-muted-foreground md:hidden">
-                    <ArrowDown class="size-4" />
-                </li>
-                <li aria-hidden="true" class="hidden w-8 shrink-0 place-items-center text-muted-foreground md:grid">
-                    {#if selectedLanguage === "ar"}
-                        <ArrowLeft class="size-4" />
-                    {:else}
-                        <ArrowRight class="size-4" />
-                    {/if}
-                </li>
-            {/if}
+                {#if index < workflowSteps.length - 1}
+                    <span aria-hidden="true" class="grid place-items-center text-muted-foreground md:hidden">
+                        <ArrowDown class="size-4" />
+                    </span>
+                    <span
+                        aria-hidden="true"
+                        class={`absolute top-1/2 z-10 hidden size-5 -translate-y-1/2 place-items-center text-muted-foreground md:grid ${
+                            selectedLanguage === "ar" ? "-left-5" : "-right-5"
+                        }`}
+                    >
+                        {#if selectedLanguage === "ar"}
+                            <ArrowLeft class="size-4" />
+                        {:else}
+                            <ArrowRight class="size-4" />
+                        {/if}
+                    </span>
+                {/if}
+            </li>
         {/each}
     </ol>
 
@@ -578,14 +624,14 @@
                     {selectedCopy.aiHeading}
                 </h2>
 
-                <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" role="radiogroup" aria-labelledby="copy-heading">
+                <div class="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4" role="radiogroup" aria-labelledby="copy-heading">
                     {#each providerOptions as provider}
                         <button
                             type="button"
                             data-testid={`provider-${provider.key}`}
                             role="radio"
                             aria-checked={selectedProvider === provider.key}
-                            class={`flex min-h-16 items-center gap-3 rounded-md border p-3 text-left transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none ${
+                            class={`flex min-h-16 min-w-0 items-center gap-3 rounded-md border p-3 text-start transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none ${
                                 selectedProvider === provider.key
                                     ? "border-primary bg-primary/5 text-foreground shadow-sm"
                                     : "bg-background text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -606,7 +652,7 @@
                             {:else}
                                 <Bot class="size-8 shrink-0 text-primary" />
                             {/if}
-                            <span class="block text-sm font-medium">
+                            <span class="block min-w-0 text-sm font-medium">
                                 {provider.label[selectedLanguage]}
                             </span>
                         </button>
@@ -617,7 +663,7 @@
                 </p>
             </div>
 
-            <div class="flex flex-col gap-3 sm:flex-row">
+            <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                 <Button data-testid="copy-prompt" onclick={copyPrompt} class="w-full sm:w-auto">
                     {#if copied}
                         <Check class="size-4" />

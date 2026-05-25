@@ -4,10 +4,14 @@
 
     import "../app.css";
     import favicon from "$lib/assets/favicon.svg";
-    import { ModeWatcher } from "mode-watcher";
+    import { ModeWatcher, setMode } from "mode-watcher";
+    import { browser } from "$app/environment";
+    import { page } from "$app/state";
     import * as NavigationMenu from "$lib/components/ui/navigation-menu/index.js";
     import { navigationMenuTriggerStyle } from "$lib/components/ui/navigation-menu/navigation-menu-trigger.svelte";
     import { cn } from "$lib/utils.js";
+    import { servicesLanguage } from "$lib/stores/services-language.svelte";
+    import { isServicesLanguage } from "$lib/services-language";
     import type { HTMLAttributes } from "svelte/elements";
 
     let { children } = $props();
@@ -44,6 +48,33 @@
 
     $effect(() => {
         loadBlogPosts();
+    });
+
+    function isThemeMode(value: string | null): value is "light" | "dark" | "system" {
+        return value === "light" || value === "dark" || value === "system";
+    }
+
+    let lastLanguageParam: string | null = null;
+    let lastThemeParam: string | null = null;
+
+    $effect(() => {
+        if (!browser) return;
+
+        const language = page.url.searchParams.get("lang");
+        if (language !== lastLanguageParam) {
+            lastLanguageParam = language;
+            if (isServicesLanguage(language)) {
+                servicesLanguage.current = language;
+            }
+        }
+
+        const theme = page.url.searchParams.get("theme");
+        if (theme !== lastThemeParam) {
+            lastThemeParam = theme;
+            if (isThemeMode(theme)) {
+                setMode(theme);
+            }
+        }
     });
 
     type ListItemProps = HTMLAttributes<HTMLAnchorElement> & {
@@ -85,6 +116,22 @@
 {/snippet}
 
 <svelte:head>
+    <script>
+        (() => {
+            const params = new URLSearchParams(window.location.search);
+            const lang = params.get("lang");
+            if (lang === "en" || lang === "ar") {
+                localStorage.setItem("services-language", lang);
+                document.cookie = `services-language=${lang}; Path=/; Max-Age=31536000; SameSite=Lax`;
+            }
+
+            const theme = params.get("theme");
+            if (theme === "light" || theme === "dark" || theme === "system") {
+                localStorage.setItem("mode-watcher-mode", theme);
+            }
+        })();
+    </script>
+
     <!-- Favicon -->
     <link rel="icon" href={favicon} />
 

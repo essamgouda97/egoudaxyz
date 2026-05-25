@@ -1,11 +1,10 @@
 import { browser } from "$app/environment";
 import {
     isServicesLanguage,
+    SERVICES_LANGUAGE_MAX_AGE,
     SERVICES_LANGUAGE_KEY,
     type ServicesLanguage,
 } from "$lib/services-language";
-
-const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
 
 function readCookieLanguage(): ServicesLanguage | undefined {
     if (!browser) return undefined;
@@ -29,7 +28,7 @@ function createServicesLanguage() {
     function save(value: ServicesLanguage) {
         if (!browser) return;
         localStorage.setItem(SERVICES_LANGUAGE_KEY, value);
-        document.cookie = `${SERVICES_LANGUAGE_KEY}=${value}; Path=/; Max-Age=${ONE_YEAR_SECONDS}; SameSite=Lax`;
+        document.cookie = `${SERVICES_LANGUAGE_KEY}=${value}; Path=/; Max-Age=${SERVICES_LANGUAGE_MAX_AGE}; SameSite=Lax`;
     }
 
     return {
