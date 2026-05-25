@@ -8,6 +8,9 @@ const staticPages = [
   { path: '/', priority: 1.0, changefreq: 'weekly' },
   { path: '/blog', priority: 0.8, changefreq: 'daily' },
   { path: '/portfolio', priority: 0.9, changefreq: 'monthly' },
+  { path: '/services', priority: 0.9, changefreq: 'monthly' },
+  { path: '/llm.txt', priority: 0.5, changefreq: 'monthly' },
+  { path: '/services/llm.txt', priority: 0.5, changefreq: 'monthly' },
 ];
 
 export const GET: RequestHandler = async () => {

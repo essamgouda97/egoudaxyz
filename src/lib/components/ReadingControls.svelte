@@ -1,6 +1,10 @@
 <script lang="ts">
     import { toggleMode, mode } from "mode-watcher";
     import { readingPrefs, type FocusStyle } from "$lib/stores/reading.svelte";
+    import {
+        servicesLanguage,
+    } from "$lib/stores/services-language.svelte";
+    import type { ServicesLanguage } from "$lib/services-language";
     import { browser } from "$app/environment";
     import { page } from "$app/state";
 
@@ -14,6 +18,11 @@
     ];
 
     const isBlogPost = $derived(page.url.pathname.startsWith("/blog/") && page.url.pathname !== "/blog/");
+    const isServicesPage = $derived(page.url.pathname === "/" || page.url.pathname === "/services");
+    const languageOptions: { value: ServicesLanguage; label: string }[] = [
+        { value: "en", label: "EN" },
+        { value: "ar", label: "عربي" },
+    ];
 
     function handleKeydown(e: KeyboardEvent) {
         if (e.key === "Escape" && open) open = false;
@@ -55,7 +64,11 @@
         <div class="controls-panel">
             <div class="panel-header">
                 <span class="panel-title">Style</span>
-                <button class="close-btn" onclick={() => (open = false)}>
+                <button
+                    class="close-btn"
+                    onclick={() => (open = false)}
+                    aria-label="Close controls"
+                >
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                         <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                     </svg>
@@ -88,6 +101,23 @@
                     </button>
                 </div>
             </div>
+
+            {#if isServicesPage}
+                <div class="control-group">
+                    <span class="control-label">Language</span>
+                    <div class="control-buttons">
+                        {#each languageOptions as opt}
+                            <button
+                                class="toggle-btn"
+                                class:active={servicesLanguage.current === opt.value}
+                                onclick={() => (servicesLanguage.current = opt.value)}
+                            >
+                                {opt.label}
+                            </button>
+                        {/each}
+                    </div>
+                </div>
+            {/if}
 
             <!-- Focus Style -->
             {#if isBlogPost}

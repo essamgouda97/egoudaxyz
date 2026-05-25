@@ -27,6 +27,7 @@ Simple, minimalistic, cheap to run.
 - For very big changes ensure to write boilerplate code only and a CHANGELOG.md entry so I can review the changes and further develop the project
 - Always assume you are writing production code, for development purposes utilize a local flag for local development
 - If deep documentation for an architecture decision is needed create/update an AGENTS_DOC.md file in the same directory
+- Do not push, deploy, or otherwise promote changes to production unless explicitly asked
 
 # Don't
 - Write tests/docs if not asked to

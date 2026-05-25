@@ -117,11 +117,25 @@
                         <NavigationMenu.Link>
                             {#snippet child()}
                                 <a
-                                    href="/"
+                                    href="/portfolio"
                                     data-sveltekit-preload-data="hover"
                                     class={navigationMenuTriggerStyle()}
                                 >
                                     Portfolio
+                                </a>
+                            {/snippet}
+                        </NavigationMenu.Link>
+                    </NavigationMenu.Item>
+
+                    <NavigationMenu.Item>
+                        <NavigationMenu.Link>
+                            {#snippet child()}
+                                <a
+                                    href="/services"
+                                    data-sveltekit-preload-data="hover"
+                                    class={navigationMenuTriggerStyle()}
+                                >
+                                    Services
                                 </a>
                             {/snippet}
                         </NavigationMenu.Link>
