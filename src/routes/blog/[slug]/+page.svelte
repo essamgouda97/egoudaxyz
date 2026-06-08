@@ -14,7 +14,7 @@
     let showResumeHint = $state(false);
     let screenWidth = $state(browser ? window.innerWidth : 1440);
 
-    const READING_KEY = `reading-pos:${data.slug}`;
+    const READING_KEY = $derived(`reading-pos:${data.slug}`);
 
     let ptPrepare: any;
     let ptLayout: any;
@@ -106,7 +106,7 @@
         };
     });
 
-    const canonicalUrl = `https://egouda.xyz/blog/${data.slug}`;
+    const canonicalUrl = $derived(`https://egouda.xyz/blog/${data.slug}`);
     const ogImage = "https://egouda.xyz/og-image.png";
 </script>
 

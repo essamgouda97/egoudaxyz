@@ -1,720 +1,1131 @@
 <script lang="ts">
+    import { onMount, tick } from "svelte";
+    import { browser } from "$app/environment";
+    import MarkdownIt from "markdown-it";
     import { Badge } from "$lib/components/ui/badge";
     import { Button } from "$lib/components/ui/button";
-    import { browser } from "$app/environment";
     import { servicesLanguage } from "$lib/stores/services-language.svelte";
     import type { PageData } from "./$types";
     import {
-        ArrowDown,
         ArrowLeft,
         ArrowRight,
         Bot,
         Check,
-        ChevronDown,
-        ClipboardCheck,
+        CircleStop,
         Copy,
-        FileText,
+        Mail,
+        Mic,
+        MicOff,
         MessageSquareText,
+        RotateCcw,
+        Send,
+        Sparkles,
     } from "@lucide/svelte";
 
     let { data }: { data: PageData } = $props();
 
-    const contactEmail = "me@egouda.xyz";
+    const storageKey = "egouda-services-chat-v1";
+    const markdown = new MarkdownIt({
+        html: false,
+        linkify: true,
+        breaks: true,
+    });
 
-    type LanguageKey = typeof servicesLanguage.current;
+    type LanguageKey = "en" | "ar";
+    type ChatRole = "assistant" | "user";
+
+    type ChatMessage = {
+        id: string;
+        role: ChatRole;
+        content: string;
+        createdAt: string;
+        learned?: string | null;
+        question?: string | null;
+        suggestedReplies?: string[];
+        usedTools?: string[];
+    };
+
+    type PocPackage = {
+        title: string;
+        markdown: string;
+        html?: string;
+        ready: boolean;
+        updatedAt?: string;
+    };
+
+    type StoredChat = {
+        messages: ChatMessage[];
+        package: PocPackage | null;
+        signalProgress?: boolean[];
+        visitorEmail: string;
+        updatedAt: string;
+    };
+
+    type SpeechRecognitionResult = {
+        readonly isFinal: boolean;
+        readonly [index: number]: { readonly transcript: string };
+    };
+
+    type SpeechRecognitionEvent = Event & {
+        readonly resultIndex: number;
+        readonly results: {
+            readonly length: number;
+            readonly [index: number]: SpeechRecognitionResult;
+        };
+    };
+
+    type SpeechRecognitionInstance = EventTarget & {
+        continuous: boolean;
+        interimResults: boolean;
+        lang: string;
+        onresult: ((event: SpeechRecognitionEvent) => void) | null;
+        onend: (() => void) | null;
+        onerror: (() => void) | null;
+        start: () => void;
+        stop: () => void;
+    };
+
+    type SpeechRecognitionConstructor = new () => SpeechRecognitionInstance;
 
     const pageCopy = {
         en: {
             lang: "en",
             dir: "ltr",
-            metaTitle: "Agentic Pipeline Prompt | Essam Gouda",
+            metaTitle: "Agentic Pipeline Intake | Essam Gouda",
             metaDescription:
-                "Copy a provider-tuned prompt, let your AI agent interview you, then email the generated agentic pipeline brief to Essam Gouda.",
-            ogDescription:
-                "Copy a prompt for ChatGPT, Claude, Gemini, or another LLM. Your agent will grill your workflow and create a Markdown brief.",
-            twitterDescription:
-                "Let your agent create a Markdown brief for an agentic pipeline design POC.",
+                "Chat with Essam Gouda's agentic pipeline intake agent. It grills your workflow, saves the transcript locally, and packages a POC brief for follow-up.",
             badges: ["Agents consultant", "Free design POC"],
-            h1: "Let your agent brief mine.",
-            workflow: ["Pick AI", "Copy Prompt", "Send & Answer", "Email Brief"],
-            languageLabel: "Language",
-            aiHeading: "Your go-to AI",
-            providerNote:
-                "Each option uses the prompt style that works best for that provider.",
-            copyPrompt: "Copy prompt",
+            h1: "Let your workflow brief my agent.",
+            sub:
+                "Answer the grill. When the POC package is ready, leave your email and it sends me the transcript plus the brief.",
+            status: "DeepSeek intake",
+            transcriptSaved: "Transcript saves in this browser.",
+            chatHeading: "Pipeline intake",
+            chatSub:
+                "One question at a time. It looks for contradictions, vague handoffs, missing owners, and the smallest useful POC.",
+            inputLabel: "Reply",
+            inputPlaceholder: "Describe the workflow you want to improve...",
+            send: "Send",
+            thinking: "Thinking",
+            working: "Working",
+            workingSteps: ["Reading context", "Drafting brief"],
+            stop: "Stop",
+            stopped: "Stopped. Send a shorter answer or try again.",
+            signal: "Planning agent",
+            nextQuestion: "Next question",
+            tapToAnswer: "Tap to answer",
+            usedTools: "Checked public context",
+            dictate: "Dictate",
+            stopDictation: "Stop dictation",
+            dictating: "Listening",
+            reset: "Reset chat",
             copied: "Copied",
-            copyEmail: "Copy email",
-            emailCopied: "Email copied",
+            copyReport: "Copy report",
+            emailHeading: "Send the POC package",
+            emailSub:
+                "Leave an email so I can reply after reviewing the transcript and package.",
+            emailLabel: "Your email",
+            emailPlaceholder: "you@company.com",
+            submit: "Send package",
+            submitting: "Sending",
+            submitted: "Package prepared",
+            submitConfigured:
+                "The package was sent. I have the transcript, report, and reply email.",
+            submitFallback:
+                "The package is ready locally. Email delivery is not configured yet, so use the mail draft or copied report.",
+            packageHeading: "POC package",
+            packageEmpty:
+                "The draft package appears here as the chat develops.",
+            packageProgress: "Signals collected",
+            packageExpectation:
+                "Ends at 6/6, then I ask for your email. Most briefs take 6-8 short answers.",
+            packageSections: ["Context", "Workflow", "Pain", "Data", "Boundaries", "POC"],
+            viewDraft: "View draft Markdown",
+            draftPrefix: "Drafting as you answer",
+            mailDraft: "Open mail draft",
             portfolio: "Check my Portfolio",
-            fullPrompt: "View full system prompt",
-            footerPrefix: "Send the generated Markdown to",
-            footerSuffix:
-                "or let your AI send the email. If your AI is not sending your emails, we need to talk.",
+            configMissing:
+                "The intake agent is temporarily unavailable. Please try again in a moment.",
+            genericError:
+                "I could not get a clean response. Send that again.",
+            intro:
+                "I am Essam's intake agent. I will grill the workflow until there is enough signal for a free agentic design POC. Start with the workflow you want to improve: who does it, what triggers it, and what makes it painful today?",
+            starterLearned: "I’ll build the POC package as you answer.",
+            starterQuestion: "Which workflow should we improve first?",
+            starterReplies: ["Customer support intake", "Ops handoff", "Document review"],
+            readyPrefix: "Ready for package",
+            assistantLabel: "Essam intake agent",
+            visitorLabel: "You",
         },
         ar: {
             lang: "ar",
             dir: "rtl",
-            metaTitle: "برومبت AI Pipeline | عصام جودة",
+            metaTitle: "Agentic Pipeline Intake | عصام جودة",
             metaDescription:
-                "انسخ برومبت مضبوط للمزوّد، خلّي الـ AI يقابلك، ثم أرسل ملخص AI pipeline إلى عصام جودة.",
-            ogDescription:
-                "انسخ برومبت لـ ChatGPT أو Claude أو Gemini أو أي LLM آخر. الـ AI سيحلل سير العمل ويجهز ملف Markdown.",
-            twitterDescription:
-                "خلّي الـ AI يجهز ملف Markdown لتصميم AI pipeline.",
+                "اتكلم مع وكيل عصام جودة لتصميم AI pipeline. سيحلل سير العمل، يحفظ المحادثة محليًا، ويجهز POC brief للمتابعة.",
             badges: ["استشارات AI Agents", "تصميم POC مجاني"],
-            h1: "خلينا نتكلم AI لـ AI.",
-            workflow: ["اختار AI", "انسخ البرومبت", "ابعت وجاوب", "أرسل البريف"],
-            languageLabel: "اللغة",
-            aiHeading: "اختار الـ AI بتاعك",
-            providerNote:
-                "كل اختيار يستخدم أسلوب البرومبت الأنسب للمزوّد.",
-            copyPrompt: "انسخ البرومبت",
+            h1: "خلّي شغلك يشرح نفسه للـ AI.",
+            sub:
+                "جاوب على الأسئلة. لما الباكدج تجهز، سيب إيميلك عشان أبعتلك بعد ما أراجع الترانسكريبت والبريف.",
+            status: "DeepSeek intake",
+            transcriptSaved: "المحادثة محفوظة في المتصفح ده.",
+            chatHeading: "تحليل الـ Pipeline",
+            chatSub:
+                "سؤال واحد كل مرة. بيدور على التناقضات، التسليمات المبهمة، ملاك القرار الغايبين، وأصغر POC مفيد.",
+            inputLabel: "ردّك",
+            inputPlaceholder: "اشرح سير العمل اللي عايز تحسّنه...",
+            send: "إرسال",
+            thinking: "يفكر",
+            working: "شغال",
+            workingSteps: ["بيقرأ السياق", "بيجهز البريف"],
+            stop: "إيقاف",
+            stopped: "وقفت الرد. ابعت إجابة أقصر أو جرّب تاني.",
+            signal: "وكيل التخطيط",
+            nextQuestion: "السؤال الجاي",
+            tapToAnswer: "اضغط للرد",
+            usedTools: "راجع سياق عام",
+            dictate: "إملاء",
+            stopDictation: "إيقاف الإملاء",
+            dictating: "بيسمع",
+            reset: "ابدأ من جديد",
             copied: "تم النسخ",
-            copyEmail: "انسخ الإيميل",
-            emailCopied: "تم نسخ الإيميل",
+            copyReport: "انسخ التقرير",
+            emailHeading: "ابعث POC package",
+            emailSub:
+                "سيب إيميلك عشان أقدر أرد عليك بعد مراجعة المحادثة والباكدج.",
+            emailLabel: "إيميلك",
+            emailPlaceholder: "you@company.com",
+            submit: "إرسال الباكدج",
+            submitting: "جاري الإرسال",
+            submitted: "الباكدج جاهزة",
+            submitConfigured:
+                "تم إرسال الباكدج. وصلني الترانسكريبت، التقرير، وإيميل الرد.",
+            submitFallback:
+                "الباكدج جاهزة محليًا. إرسال الإيميل من السيرفر غير مضبوط حاليًا، استخدم مسودة الإيميل أو انسخ التقرير.",
+            packageHeading: "POC package",
+            packageEmpty:
+                "مسودة الباكدج بتظهر هنا مع تطور المحادثة.",
+            packageProgress: "الإشارات اللي اتجمعت",
+            packageExpectation:
+                "بتخلص عند ٦/٦، وبعدها هطلب الإيميل. غالبًا ٦-٨ إجابات قصيرة.",
+            packageSections: ["السياق", "السير", "الألم", "الداتا", "الحدود", "الـ POC"],
+            viewDraft: "اعرض مسودة Markdown",
+            draftPrefix: "مسودة بتتحدث مع إجاباتك",
+            mailDraft: "افتح مسودة إيميل",
             portfolio: "شوف البورتفوليو",
-            fullPrompt: "اعرض برومبت النظام كامل",
-            footerPrefix: "أرسل ملف Markdown الناتج إلى",
-            footerSuffix:
-                "أو خلّي الـ AI يرسل الإيميل. لو الـ AI بتاعك لا يرسل إيميلاتك، لازم نتكلم.",
+            configMissing:
+                "وكيل التحليل غير متاح مؤقتًا. جرّب تاني بعد لحظة.",
+            genericError:
+                "الرد طلع مش واضح. ابعته تاني.",
+            intro:
+                "أنا وكيل عصام للتحليل الأولي. هسألك لحد ما يكون عندي تفاصيل كفاية لتصميم POC مجاني لـ agentic pipeline. ابدأ بسير العمل اللي عايز تحسّنه: مين بيعمله، إيه اللي بيبدأه، وإيه المؤلم فيه دلوقتي؟",
+            starterLearned: "هجهز الباكدج وإنت بتجاوب.",
+            starterQuestion: "أنهي workflow نبدأ نحسّنه؟",
+            starterReplies: ["دعم العملاء", "تسليمات العمليات", "مراجعة مستندات"],
+            readyPrefix: "جاهزة كباكدج",
+            assistantLabel: "وكيل عصام",
+            visitorLabel: "أنت",
         },
     } as const;
 
-    const commonRules = {
-        en: [
-            "You are interviewing the person who pasted this prompt. You are not Essam Gouda.",
-            "Ask one question at a time.",
-            "Use the same language the interviewee uses unless they ask otherwise. Match their answer style, vocabulary, and level of detail.",
-            "After each answer, briefly state what you learned, name the likely business implication, then ask the next highest-leverage question.",
-            "Track facts across the conversation. If two answers are inconsistent or contradict each other, slow down, explain the mismatch neutrally, propose the cleanest interpretation, and ask them to confirm or correct it.",
-            "If an answer is vague, challenge it and ask for concrete examples, volumes, systems, exceptions, owners, costs, cycle time, or constraints.",
-            "If the person is unsure, propose a sensible default answer and ask them to confirm or correct it.",
-            "If they cannot name the pain clearly, infer likely pain points from their workflow and offer two or three hypotheses for them to react to.",
-            "Make the value of an agentic pipeline tangible as the interview progresses: point out where automation, retrieval, tool use, approvals, monitoring, or human review could remove friction.",
-            "Keep the tone consultative, not pushy. The sales motion is to prove Essam's value by understanding the workflow better than a generic automation pitch would.",
-            "Do not design the solution until you understand the current workflow, stakeholders, tools, data, approval boundaries, risks, and success metric.",
-            "Do not ask for secrets, passwords, tokens, API keys, private customer data, or regulated data. Ask for safe descriptions instead.",
-            "Keep internal reasoning private. Show concise rationale, useful assumptions, and the next question.",
-        ].join("\n- "),
-        ar: [
-            "أنت تجري مقابلة مع الشخص الذي لصق هذا البرومبت. أنت لست عصام جودة.",
-            "اسأل سؤالًا واحدًا في كل مرة.",
-            "استخدم نفس لغة الشخص ما لم يطلب غير ذلك. طابق أسلوبه، مفرداته، ومستوى التفاصيل في إجاباته.",
-            "بعد كل إجابة، لخّص باختصار ما فهمته، اذكر الأثر التجاري المحتمل، ثم اسأل السؤال التالي الأعلى قيمة.",
-            "تتبّع الحقائق خلال الحوار. إذا ظهرت إجابتان غير متسقتين أو متناقضتين، تمهّل، اشرح التعارض بهدوء، اقترح أوضح تفسير، واطلب منه التأكيد أو التصحيح.",
-            "إذا كانت الإجابة عامة أو مبهمة، تحدّاها بلطف واطلب أمثلة محددة، أحجام عمل، أنظمة، استثناءات، ملاك قرار، تكلفة، زمن دورة، أو قيود.",
-            "إذا كان الشخص غير متأكد، اقترح إجابة افتراضية منطقية واطلب منه تأكيدها أو تعديلها.",
-            "إذا لم يستطع تسمية الألم بوضوح، استنتج نقاط الألم المحتملة من سير العمل وقدّم فرضيتين أو ثلاثًا ليرد عليها.",
-            "اجعل قيمة الـ AI pipeline ملموسة أثناء المقابلة: وضّح أين يمكن للأتمتة، الاسترجاع، استخدام الأدوات، الموافقات، المراقبة، أو المراجعة البشرية إزالة الاحتكاك.",
-            "حافظ على نبرة استشارية غير ضاغطة. الهدف البيعي هو إثبات قيمة عصام عبر فهم سير العمل بعمق أكبر من عرض أتمتة عام.",
-            "لا تصمم الحل قبل فهم سير العمل الحالي، أصحاب المصلحة، الأدوات، البيانات، حدود الموافقة، المخاطر، ومقياس النجاح.",
-            "لا تطلب أسرارًا، كلمات مرور، توكنات، مفاتيح API، بيانات عملاء خاصة، أو بيانات منظمة حساسة. اطلب أوصافًا آمنة بدلًا من ذلك.",
-            "احتفظ بالتفكير الداخلي لنفسك. اعرض سببًا مختصرًا، افتراضات مفيدة، والسؤال التالي.",
-        ].join("\n- "),
-    } as const;
+    const packageSectionNeedles = [
+        ["business snapshot"],
+        ["current workflow"],
+        ["pain and opportunity"],
+        ["tools, data, and access"],
+        ["human review boundaries"],
+        ["recommended free design poc"],
+    ] as const;
+    const emptySignalProgress = () => packageSectionNeedles.map(() => false);
 
-    const interviewMap = {
-        en: [
-            "Business context: what the team does, who the workflow serves, and how often the work happens.",
-            "Current workflow: trigger, inputs, systems, human decisions, outputs, handoffs, and exceptions.",
-            "Pain: bottlenecks, delays, rework, quality issues, cost, compliance risk, or missed revenue.",
-            "Consistency check: assumptions, contradictions, missing owners, unclear handoffs, and places where the user's stated goals do not match the current process.",
-            "Tool and data reality: where context lives, what systems exist, what APIs or files are available, and who owns access.",
-            "Decision boundaries: what can be automated, what needs approval, and what must never be automated.",
-            "Success criteria: what a free design POC should prove in one or two weeks.",
-            "Candidate agentic pipelines: practical options with impact, complexity, and risk.",
-            "Build recommendation: the first thin slice worth building if the design looks useful.",
-        ].join("\n"),
-        ar: [
-            "سياق العمل: ماذا يفعل الفريق، من يخدمه سير العمل، وكم مرة يحدث.",
-            "سير العمل الحالي: المحفّز، المدخلات، الأنظمة، قرارات البشر، المخرجات، التسليمات، والاستثناءات.",
-            "الألم: الاختناقات، التأخير، إعادة العمل، مشاكل الجودة، التكلفة، مخاطر الامتثال، أو الإيراد الضائع.",
-            "فحص الاتساق: الافتراضات، التناقضات، غياب ملاك القرار، التسليمات غير الواضحة، وأي فجوة بين الأهداف المعلنة والعملية الحالية.",
-            "واقع الأدوات والبيانات: أين يعيش السياق، ما الأنظمة الموجودة، ما واجهات API أو الملفات المتاحة، ومن يملك الوصول.",
-            "حدود القرار: ما يمكن أتمتته، ما يحتاج موافقة، وما يجب أن يبقى بيد البشر.",
-            "معايير النجاح: ما الذي يجب أن يثبته تصميم POC مجاني خلال أسبوع أو أسبوعين.",
-            "AI pipelines مرشحة: خيارات عملية مع الأثر، التعقيد، والمخاطر.",
-            "توصية البناء: أصغر شريحة تستحق البناء إذا بدا التصميم مفيدًا.",
-        ].join("\n"),
-    } as const;
-
-    const markdownOutput = {
-        en: [
-            "# Agentic Pipeline Brief",
-            "",
-            "## 1. Business Snapshot",
-            "Company/team, audience served, workflow owner, rough volume, and why this matters now.",
-            "",
-            "## 2. Current Workflow",
-            "Trigger, inputs, systems, steps, human decisions, outputs, handoffs, and exceptions.",
-            "",
-            "## 3. Workflow Pain And Opportunity",
-            "Where time, money, quality, risk, or customer experience is currently leaking. Include confirmed pain points and likely pain hypotheses.",
-            "",
-            "## 4. Contradictions And Clarifications",
-            "Inconsistencies found during the interview, how they were resolved, and what still needs confirmation.",
-            "",
-            "## 5. Systems, Tools, And Data",
-            "Relevant apps, documents, databases, APIs, permissions, and data sensitivity notes. Do not include secrets.",
-            "",
-            "## 6. Human Approval And Risk Boundaries",
-            "What an agent may do alone, what needs review, and what must stay human-owned.",
-            "",
-            "## 7. Candidate Agentic Pipelines",
-            "Create a table with these columns: Pipeline | User | Trigger | Inputs | Agent Actions | Human Review | Output | Risk | Expected Value | Complexity.",
-            "",
-            "## 8. Recommended Free Design POC",
-            "The smallest useful POC Essam should design first, what it proves, and what should be out of scope.",
-            "",
-            "## 9. Where Essam Adds Leverage",
-            "Explain why a consultant who understands agents, tools, workflow boundaries, and implementation tradeoffs would help this pipeline succeed.",
-            "",
-            "## 10. Build Scope If The POC Looks Right",
-            "A practical build path if the user wants Essam to help build it too.",
-            "",
-            "## 11. Open Questions For Essam",
-            "Questions that still need a consultant's judgment.",
-        ].join("\n"),
-        ar: [
-            "# ملخص AI Pipeline",
-            "",
-            "## 1. لمحة عن العمل",
-            "الشركة/الفريق، الجمهور الذي يتم خدمته، مالك سير العمل، الحجم التقريبي، ولماذا هذا مهم الآن.",
-            "",
-            "## 2. سير العمل الحالي",
-            "المحفّز، المدخلات، الأنظمة، الخطوات، قرارات البشر، المخرجات، التسليمات، والاستثناءات.",
-            "",
-            "## 3. الألم والفرصة في سير العمل",
-            "أين يتسرب الوقت، المال، الجودة، المخاطر، أو تجربة العميل. اذكر نقاط الألم المؤكدة وفرضيات الألم المحتملة.",
-            "",
-            "## 4. التناقضات والتوضيحات",
-            "التناقضات التي ظهرت أثناء المقابلة، كيف تم حلها، وما الذي ما زال يحتاج تأكيدًا.",
-            "",
-            "## 5. الأنظمة والأدوات والبيانات",
-            "التطبيقات، المستندات، قواعد البيانات، واجهات API، الصلاحيات، وملاحظات حساسية البيانات ذات الصلة. لا تدرج أي أسرار.",
-            "",
-            "## 6. حدود المراجعة البشرية والمخاطر",
-            "ما يمكن للـ AI فعله وحده، ما يحتاج مراجعة، وما يجب أن يبقى مملوكًا للبشر.",
-            "",
-            "## 7. AI Pipelines مرشحة",
-            "أنشئ جدولًا بهذه الأعمدة: خط الأنابيب | المستخدم | المحفّز | المدخلات | إجراءات الوكيل | المراجعة البشرية | المخرج | المخاطر | القيمة المتوقعة | التعقيد.",
-            "",
-            "## 8. تصميم POC مجاني موصى به",
-            "أصغر POC مفيد يجب أن يصممه عصام أولًا، ما الذي يثبته، وما الذي يجب أن يكون خارج النطاق.",
-            "",
-            "## 9. أين يضيف عصام قيمة",
-            "اشرح لماذا يساعد مستشار يفهم AI agents، الأدوات، حدود سير العمل، ومفاضلات التنفيذ في إنجاح هذا الخط.",
-            "",
-            "## 10. نطاق البناء إذا كان الـ POC مناسبًا",
-            "مسار بناء عملي إذا أراد المستخدم أن يساعد عصام في بنائه أيضًا.",
-            "",
-            "## 11. أسئلة مفتوحة لعصام",
-            "أسئلة ما زالت تحتاج حكم مستشار.",
-        ].join("\n"),
-    } as const;
-
-    const promptVariants = {
-        en: {
-            chatgpt: {
-                prompt: [
-                    "Formatting re-enabled.",
-                    "",
-                    "# Role",
-                    "You are a business workflow interviewer and agentic-pipeline strategist.",
-                    "",
-                    "# Mission",
-                    `Interview me until you can produce a practical Markdown brief for Essam Gouda at ${contactEmail}. The brief should help Essam design a free agentic pipeline POC. If the design looks useful, Essam can help build it too.`,
-                    "",
-                    "# Operating Rules",
-                    `- ${commonRules.en}`,
-                    "",
-                    "# Interview Map",
-                    interviewMap.en,
-                    "",
-                    "# Final Output",
-                    "When you have enough detail, stop interviewing and output exactly one Markdown document named agentic-pipeline-brief.md:",
-                    "",
-                    markdownOutput.en,
-                    "",
-                    `End by saying: Email this Markdown file to ${contactEmail} with the subject "Agentic pipeline brief". Or let your AI send the email if it has email access.`,
-                ].join("\n"),
-            },
-            claude: {
-                prompt: [
-                    "<role>",
-                    "You are a business workflow interviewer and agentic-pipeline strategist.",
-                    "</role>",
-                    "",
-                    "<mission>",
-                    `Interview me until you can produce a practical Markdown brief for Essam Gouda at ${contactEmail}. The brief should help Essam design a free agentic pipeline POC. If the design looks useful, Essam can help build it too.`,
-                    "</mission>",
-                    "",
-                    "<operating_rules>",
-                    `- ${commonRules.en}`,
-                    "</operating_rules>",
-                    "",
-                    "<interview_map>",
-                    interviewMap.en,
-                    "</interview_map>",
-                    "",
-                    "<final_output>",
-                    "When you have enough detail, stop interviewing and output exactly one Markdown document named agentic-pipeline-brief.md:",
-                    "",
-                    markdownOutput.en,
-                    "",
-                    `After the Markdown, say: Email this Markdown file to ${contactEmail} with the subject "Agentic pipeline brief". Or let your AI send the email if it has email access.`,
-                    "</final_output>",
-                ].join("\n"),
-            },
-            gemini: {
-                prompt: [
-                    "System instructions:",
-                    "",
-                    "Role: You are a business workflow interviewer and agentic-pipeline strategist.",
-                    "",
-                    `Objective: Interview me until you can produce a practical Markdown brief for Essam Gouda at ${contactEmail}. The brief should help Essam design a free agentic pipeline POC. If the design looks useful, Essam can help build it too.`,
-                    "",
-                    "Rules:",
-                    `- ${commonRules.en}`,
-                    "",
-                    "Interview agenda:",
-                    interviewMap.en,
-                    "",
-                    "Final response format:",
-                    "When you have enough detail, stop interviewing and output exactly one Markdown document named agentic-pipeline-brief.md.",
-                    "",
-                    markdownOutput.en,
-                    "",
-                    `Final instruction to the user: Email this Markdown file to ${contactEmail} with the subject "Agentic pipeline brief". Or let your AI send the email if it has email access.`,
-                ].join("\n"),
-            },
-            other: {
-                prompt: [
-                    "You are a business workflow interviewer and agentic-pipeline strategist.",
-                    "",
-                    "Interview the user one question at a time until you can produce a practical Markdown brief for Essam Gouda at me@egouda.xyz.",
-                    "",
-                    "Rules:",
-                    `- ${commonRules.en}`,
-                    "",
-                    "Interview agenda:",
-                    interviewMap.en,
-                    "",
-                    "When you have enough detail, output exactly one Markdown document named agentic-pipeline-brief.md:",
-                    "",
-                    markdownOutput.en,
-                    "",
-                    `End by telling the user to email the Markdown file to ${contactEmail} with the subject "Agentic pipeline brief", or to let their AI send the email if it has email access.`,
-                ].join("\n"),
-            },
-        },
-        ar: {
-            chatgpt: {
-                prompt: [
-                    "Formatting re-enabled.",
-                    "",
-                    "# الدور",
-                    "أنت محاور لسير العمل التجاري واستراتيجي لـ AI agentic pipelines.",
-                    "",
-                    "# المهمة",
-                    `قابلني حتى تستطيع إنتاج ملف Markdown عملي لعصام جودة على ${contactEmail}. يجب أن يساعد الملف عصام على تصميم POC مجاني لـ AI pipeline. إذا بدا التصميم مفيدًا، يمكن لعصام أن يساعد في بنائه أيضًا.`,
-                    "",
-                    "# قواعد التشغيل",
-                    `- ${commonRules.ar}`,
-                    "",
-                    "# خريطة المقابلة",
-                    interviewMap.ar,
-                    "",
-                    "# المخرج النهائي",
-                    "عندما تجمع تفاصيل كافية، توقف عن المقابلة وأخرج مستند Markdown واحدًا بالضبط باسم agentic-pipeline-brief.md:",
-                    "",
-                    markdownOutput.ar,
-                    "",
-                    `اختم بقول: أرسل ملف Markdown هذا إلى ${contactEmail} بعنوان "Agentic pipeline brief". أو اطلب من الـ AI إرسال الإيميل إذا كان لديه صلاحية الإرسال.`,
-                ].join("\n"),
-            },
-            claude: {
-                prompt: [
-                    "<role>",
-                    "أنت محاور لسير العمل التجاري واستراتيجي لـ AI agentic pipelines.",
-                    "</role>",
-                    "",
-                    "<mission>",
-                    `قابلني حتى تستطيع إنتاج ملف Markdown عملي لعصام جودة على ${contactEmail}. يجب أن يساعد الملف عصام على تصميم POC مجاني لـ AI pipeline. إذا بدا التصميم مفيدًا، يمكن لعصام أن يساعد في بنائه أيضًا.`,
-                    "</mission>",
-                    "",
-                    "<operating_rules>",
-                    `- ${commonRules.ar}`,
-                    "</operating_rules>",
-                    "",
-                    "<interview_map>",
-                    interviewMap.ar,
-                    "</interview_map>",
-                    "",
-                    "<final_output>",
-                    "عندما تجمع تفاصيل كافية، توقف عن المقابلة وأخرج مستند Markdown واحدًا بالضبط باسم agentic-pipeline-brief.md:",
-                    "",
-                    markdownOutput.ar,
-                    "",
-                    `بعد ملف Markdown، قل: أرسل ملف Markdown هذا إلى ${contactEmail} بعنوان "Agentic pipeline brief". أو اطلب من الـ AI إرسال الإيميل إذا كان لديه صلاحية الإرسال.`,
-                    "</final_output>",
-                ].join("\n"),
-            },
-            gemini: {
-                prompt: [
-                    "تعليمات النظام:",
-                    "",
-                    "الدور: أنت محاور لسير العمل التجاري واستراتيجي لـ AI agentic pipelines.",
-                    "",
-                    `الهدف: قابلني حتى تستطيع إنتاج ملف Markdown عملي لعصام جودة على ${contactEmail}. يجب أن يساعد الملف عصام على تصميم POC مجاني لـ AI pipeline. إذا بدا التصميم مفيدًا، يمكن لعصام أن يساعد في بنائه أيضًا.`,
-                    "",
-                    "القواعد:",
-                    `- ${commonRules.ar}`,
-                    "",
-                    "أجندة المقابلة:",
-                    interviewMap.ar,
-                    "",
-                    "تنسيق الرد النهائي:",
-                    "عندما تجمع تفاصيل كافية، توقف عن المقابلة وأخرج مستند Markdown واحدًا بالضبط باسم agentic-pipeline-brief.md.",
-                    "",
-                    markdownOutput.ar,
-                    "",
-                    `التعليمات النهائية للمستخدم: أرسل ملف Markdown هذا إلى ${contactEmail} بعنوان "Agentic pipeline brief". أو اطلب من الـ AI إرسال الإيميل إذا كان لديه صلاحية الإرسال.`,
-                ].join("\n"),
-            },
-            other: {
-                prompt: [
-                    "أنت محاور لسير العمل التجاري واستراتيجي لـ AI agentic pipelines.",
-                    "",
-                    `قابل المستخدم سؤالًا واحدًا في كل مرة حتى تستطيع إنتاج ملف Markdown عملي لعصام جودة على ${contactEmail}.`,
-                    "",
-                    "القواعد:",
-                    `- ${commonRules.ar}`,
-                    "",
-                    "أجندة المقابلة:",
-                    interviewMap.ar,
-                    "",
-                    "عندما تجمع تفاصيل كافية، أخرج مستند Markdown واحدًا بالضبط باسم agentic-pipeline-brief.md:",
-                    "",
-                    markdownOutput.ar,
-                    "",
-                    `اختم بإخبار المستخدم أن يرسل ملف Markdown إلى ${contactEmail} بعنوان "Agentic pipeline brief"، أو أن يطلب من الـ AI إرسال الإيميل إذا كان لديه صلاحية الإرسال.`,
-                ].join("\n"),
-            },
-        },
-    } as const;
-
-    type ProviderKey = keyof (typeof promptVariants)["en"];
-
-    const providerOptions: Array<{
-        key: ProviderKey;
-        label: Record<LanguageKey, string>;
-        logo?: string;
-    }> = [
-        {
-            key: "chatgpt",
-            label: { en: "ChatGPT", ar: "ChatGPT" },
-            logo: "/agent-logos/chatgpt.svg",
-        },
-        {
-            key: "claude",
-            label: { en: "Claude", ar: "Claude" },
-            logo: "/agent-logos/claude.svg",
-        },
-        {
-            key: "gemini",
-            label: { en: "Gemini", ar: "Gemini" },
-            logo: "/agent-logos/gemini.svg",
-        },
-        { key: "other", label: { en: "Other", ar: "أخرى" } },
-    ];
-
-    const workflowSteps = [
-        {
-            icon: Bot,
-        },
-        {
-            icon: ClipboardCheck,
-        },
-        {
-            icon: MessageSquareText,
-        },
-        {
-            icon: FileText,
-        },
-    ];
-
-    let selectedProvider = $state<ProviderKey>("chatgpt");
-    let copied = $state(false);
-    let emailCopied = $state(false);
-    let copyTimer: ReturnType<typeof setTimeout> | undefined;
-    let emailCopyTimer: ReturnType<typeof setTimeout> | undefined;
-
-    const selectedLanguage = $derived(browser ? servicesLanguage.current : data.language);
+    const selectedLanguage = $derived<LanguageKey>(
+        browser ? servicesLanguage.current : data.language,
+    );
     const selectedCopy = $derived(pageCopy[selectedLanguage]);
-    const selectedPrompt = $derived(promptVariants[selectedLanguage][selectedProvider]);
-    const contactHref = `mailto:${contactEmail}`;
 
-    async function copyPrompt() {
-        try {
-            await navigator.clipboard.writeText(selectedPrompt.prompt);
-            copied = true;
-        } catch {
-            window.prompt("Copy this prompt", selectedPrompt.prompt);
-            copied = false;
-        }
+    let messages = $state<ChatMessage[]>([]);
+    let draft = $state("");
+    let visitorEmail = $state("");
+    let pocPackage = $state<PocPackage | null>(null);
+    let signalProgress = $state<boolean[]>(emptySignalProgress());
+    let hydrated = $state(false);
+    let isSending = $state(false);
+    let isSubmitting = $state(false);
+    let copiedReport = $state(false);
+    let submitMessage = $state("");
+    let mailtoHref = $state("");
+    let chatViewport: HTMLDivElement | undefined = $state();
+    let canDictate = $state(false);
+    let isDictating = $state(false);
+    let speechRecognition: SpeechRecognitionInstance | null = null;
+    let activeChatRequest: AbortController | null = null;
 
-        if (copyTimer) {
-            clearTimeout(copyTimer);
-        }
+    const canSend = $derived(draft.trim().length > 0 && !isSending);
+    const canSubmit = $derived(
+        Boolean(pocPackage?.ready) && isEmail(visitorEmail) && !isSubmitting && !isSending,
+    );
+    const reportMarkdown = $derived(buildLocalMarkdown());
+    const packageProgress = $derived(getPackageProgress(signalProgress, selectedLanguage));
+    const completedPackageItems = $derived(packageProgress.filter((item) => item.complete).length);
+    const packageProgressPercent = $derived(
+        packageProgress.length ? Math.round((completedPackageItems / packageProgress.length) * 100) : 0,
+    );
 
-        copyTimer = setTimeout(() => {
-            copied = false;
-        }, 2200);
+    onMount(() => {
+        loadStoredChat();
+        setupDictation();
+        hydrated = true;
+    });
+
+    $effect(() => {
+        if (!browser || !hydrated) return;
+
+        const payload: StoredChat = {
+            messages,
+            package: pocPackage,
+            signalProgress,
+            visitorEmail,
+            updatedAt: new Date().toISOString(),
+        };
+
+        localStorage.setItem(storageKey, JSON.stringify(payload));
+    });
+
+    $effect(() => {
+        messages.length;
+        if (!browser || !chatViewport) return;
+        tick().then(() => {
+            chatViewport?.scrollTo({ top: chatViewport.scrollHeight, behavior: "smooth" });
+        });
+    });
+
+    function createMessage(
+        role: ChatRole,
+        content: string,
+        options: Partial<Pick<ChatMessage, "learned" | "question" | "suggestedReplies" | "usedTools">> = {},
+    ): ChatMessage {
+        return {
+            id: crypto.randomUUID(),
+            role,
+            content,
+            createdAt: new Date().toISOString(),
+            ...options,
+        };
     }
 
-    async function copyEmail() {
+    function setupDictation() {
+        if (!browser) return;
+        const windowWithSpeech = window as typeof window & {
+            SpeechRecognition?: SpeechRecognitionConstructor;
+            webkitSpeechRecognition?: SpeechRecognitionConstructor;
+        };
+        const Recognition = windowWithSpeech.SpeechRecognition || windowWithSpeech.webkitSpeechRecognition;
+
+        if (!Recognition) return;
+
+        canDictate = true;
+        speechRecognition = new Recognition();
+        speechRecognition.continuous = false;
+        speechRecognition.interimResults = true;
+        speechRecognition.lang = selectedLanguage === "ar" ? "ar-EG" : "en-US";
+        speechRecognition.onresult = (event) => {
+            let transcript = "";
+            for (let index = event.resultIndex; index < event.results.length; index += 1) {
+                transcript += event.results[index][0]?.transcript || "";
+            }
+            if (!transcript.trim()) return;
+            draft = `${draft ? `${draft.trimEnd()} ` : ""}${transcript.trim()}`;
+        };
+        speechRecognition.onend = () => {
+            isDictating = false;
+        };
+        speechRecognition.onerror = () => {
+            isDictating = false;
+        };
+    }
+
+    function initialMessage(language: LanguageKey): ChatMessage {
+        return createMessage("assistant", pageCopy[language].intro, {
+            learned: pageCopy[language].starterLearned,
+            question: pageCopy[language].starterQuestion,
+            suggestedReplies: [...pageCopy[language].starterReplies],
+        });
+    }
+
+    function loadStoredChat() {
+        if (!browser) return;
+
         try {
-            await navigator.clipboard.writeText(contactEmail);
-            emailCopied = true;
+            const raw = localStorage.getItem(storageKey);
+            if (!raw) {
+                messages = [initialMessage(selectedLanguage)];
+                return;
+            }
+
+            const parsed = JSON.parse(raw) as Partial<StoredChat>;
+            messages = Array.isArray(parsed.messages) && parsed.messages.length > 0
+                ? parsed.messages.filter((message) =>
+                    (message.role === "assistant" || message.role === "user") &&
+                    typeof message.content === "string",
+                )
+                : [initialMessage(selectedLanguage)];
+            pocPackage = parsed.package?.markdown ? parsed.package as PocPackage : null;
+            signalProgress = normalizeStoredProgress(parsed.signalProgress);
+            if (pocPackage?.markdown) {
+                signalProgress = mergeSignalProgress(signalProgress, pocPackage.markdown, pocPackage.ready);
+            }
+            visitorEmail = typeof parsed.visitorEmail === "string" ? parsed.visitorEmail : "";
         } catch {
-            emailCopied = false;
+            messages = [initialMessage(selectedLanguage)];
+        }
+    }
+
+    async function sendMessage(override?: string) {
+        const content = (override ?? draft).trim();
+        if (!content || isSending) return;
+
+        const nextMessages = [...messages, createMessage("user", content)];
+        messages = nextMessages;
+        draft = "";
+        isSending = true;
+        submitMessage = "";
+        mailtoHref = "";
+        const controller = new AbortController();
+        activeChatRequest = controller;
+
+        try {
+            const response = await fetch("/api/services-chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                signal: controller.signal,
+                body: JSON.stringify({
+                    language: selectedLanguage,
+                    messages: nextMessages,
+                }),
+            });
+
+            const result = await response.json();
+
+            if (result?.code === "missing_deepseek_key") {
+                messages = [...nextMessages, createMessage("assistant", selectedCopy.configMissing)];
+                return;
+            }
+
+            if (!response.ok) {
+                const message = result?.message || selectedCopy.genericError;
+                messages = [...nextMessages, createMessage("assistant", message)];
+                return;
+            }
+
+            const assistantMessage = typeof result.assistantMessage === "string"
+                ? result.assistantMessage
+                : selectedCopy.genericError;
+            const suggestedReplies = Array.isArray(result.suggestedReplies)
+                ? result.suggestedReplies.filter((item: unknown) => typeof item === "string").slice(0, 3)
+                : [];
+            const usedTools = Array.isArray(result.usedTools)
+                ? result.usedTools.filter((item: unknown) => typeof item === "string").slice(0, 3)
+                : [];
+
+            messages = [
+                ...nextMessages,
+                createMessage("assistant", assistantMessage, {
+                    learned: typeof result.learned === "string" ? result.learned : null,
+                    question: typeof result.question === "string" ? result.question : null,
+                    suggestedReplies,
+                    usedTools,
+                }),
+            ];
+
+            const packageMarkdown = typeof result.packageMarkdown === "string" && result.packageMarkdown
+                ? result.packageMarkdown
+                : typeof result.draftPackageMarkdown === "string"
+                ? result.draftPackageMarkdown
+                : "";
+
+            if (packageMarkdown) {
+                pocPackage = {
+                    title: result.packageTitle || "Agentic pipeline POC package",
+                    markdown: packageMarkdown,
+                    html: typeof result.packageHtml === "string" ? result.packageHtml : undefined,
+                    ready: result.ready === true && Boolean(result.packageMarkdown),
+                    updatedAt: new Date().toISOString(),
+                };
+                signalProgress = mergeSignalProgress(signalProgress, packageMarkdown, pocPackage.ready);
+            }
+        } catch (error) {
+            messages = [
+                ...nextMessages,
+                createMessage(
+                    "assistant",
+                    isAbortError(error) ? selectedCopy.stopped : selectedCopy.genericError,
+                ),
+            ];
+        } finally {
+            if (activeChatRequest === controller) {
+                activeChatRequest = null;
+                isSending = false;
+            }
+        }
+    }
+
+    function handleKeydown(event: KeyboardEvent) {
+        if (event.key === "Enter" && !event.shiftKey) {
+            event.preventDefault();
+            sendMessage();
+        }
+    }
+
+    function sendSuggestedReply(reply: string) {
+        if (isSending) return;
+        sendMessage(reply);
+    }
+
+    function stopResponse() {
+        activeChatRequest?.abort();
+    }
+
+    function toggleDictation() {
+        if (!speechRecognition || !canDictate) return;
+
+        speechRecognition.lang = selectedLanguage === "ar" ? "ar-EG" : "en-US";
+        if (isDictating) {
+            speechRecognition.stop();
+            isDictating = false;
+            return;
         }
 
-        if (emailCopyTimer) {
-            clearTimeout(emailCopyTimer);
+        try {
+            speechRecognition.start();
+            isDictating = true;
+        } catch {
+            isDictating = false;
+        }
+    }
+
+    function renderAssistantMarkdown(content: string) {
+        return markdown.render(content);
+    }
+
+    async function submitPackage() {
+        if (!canSubmit || !pocPackage) return;
+
+        isSubmitting = true;
+        submitMessage = "";
+        mailtoHref = "";
+
+        let stored: StoredChat | undefined;
+        if (browser) {
+            try {
+                stored = JSON.parse(localStorage.getItem(storageKey) || "{}") as StoredChat;
+            } catch {
+                stored = undefined;
+            }
         }
 
-        emailCopyTimer = setTimeout(() => {
-            emailCopied = false;
-        }, 2200);
+        const storedMessages = stored?.messages?.length ? stored.messages : [];
+        const transcript = storedMessages.length ? storedMessages : messages;
+
+        try {
+            const response = await fetch("/api/services-package", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    language: selectedLanguage,
+                    visitorEmail,
+                    transcript,
+                    packageMarkdown: pocPackage.markdown,
+                    packageHtml: pocPackage.html,
+                    source: "services-chat",
+                }),
+            });
+
+            const result = await response.json();
+            mailtoHref = !result.sent && typeof result.mailtoHref === "string" ? result.mailtoHref : "";
+            submitMessage = result.sent
+                ? selectedCopy.submitConfigured
+                : selectedCopy.submitFallback;
+
+            if (!response.ok && result.message) {
+                submitMessage = result.message;
+            }
+        } catch {
+            submitMessage = selectedCopy.genericError;
+        } finally {
+            isSubmitting = false;
+        }
+    }
+
+    async function copyReport() {
+        try {
+            await navigator.clipboard.writeText(reportMarkdown);
+            copiedReport = true;
+            setTimeout(() => {
+                copiedReport = false;
+            }, 2200);
+        } catch {
+            window.prompt("Copy report", reportMarkdown);
+        }
+    }
+
+    function resetChat() {
+        activeChatRequest?.abort();
+        activeChatRequest = null;
+        messages = [initialMessage(selectedLanguage)];
+        draft = "";
+        pocPackage = null;
+        signalProgress = emptySignalProgress();
+        visitorEmail = "";
+        submitMessage = "";
+        mailtoHref = "";
+        isSending = false;
+        if (browser) {
+            localStorage.removeItem(storageKey);
+        }
+    }
+
+    function buildLocalMarkdown() {
+        const lines = [
+            "# Agentic POC Package",
+            "",
+            `Contact: ${visitorEmail || "not provided yet"}`,
+            `Generated: ${new Date().toISOString()}`,
+            "",
+            "## Package",
+            "",
+            pocPackage?.markdown || "Package is not ready yet.",
+            "",
+            "## Full Transcript",
+            "",
+            ...messages.map((message) => [
+                `### ${message.role === "user" ? "Visitor" : "Essam intake agent"}`,
+                "",
+                message.content,
+                "",
+            ].join("\n")),
+        ];
+
+        return lines.join("\n");
+    }
+
+    function isEmail(value: string) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+    }
+
+    function isAbortError(error: unknown) {
+        return error instanceof DOMException && error.name === "AbortError";
+    }
+
+    function normalizeStoredProgress(value: unknown) {
+        if (!Array.isArray(value)) return emptySignalProgress();
+        return packageSectionNeedles.map((_, index) => value[index] === true);
+    }
+
+    function mergeSignalProgress(current: boolean[], markdownValue: string, ready = false) {
+        if (ready) return packageSectionNeedles.map(() => true);
+        const next = normalizeStoredProgress(current);
+        packageSectionNeedles.forEach((needles, index) => {
+            next[index] = next[index] || sectionIsComplete(markdownValue, needles);
+        });
+        return next;
+    }
+
+    function getPackageProgress(progressState: boolean[], language: LanguageKey) {
+        const normalizedProgress = normalizeStoredProgress(progressState);
+        return packageSectionNeedles.map((_, index) => ({
+            label: pageCopy[language].packageSections[index],
+            complete: normalizedProgress[index],
+        }));
+    }
+
+    function sectionIsComplete(markdownValue: string, needles: readonly string[]) {
+        const normalized = markdownValue.toLowerCase();
+        const sectionIndex = needles
+            .map((needle) => normalized.indexOf(needle))
+            .find((index) => index >= 0);
+
+        if (sectionIndex === undefined || sectionIndex < 0) return false;
+
+        const section = markdownValue.slice(sectionIndex);
+        const nextSection = section.search(/\n##\s+\d+\./);
+        const body = (nextSection > 0 ? section.slice(0, nextSection) : section)
+            .replace(/^.*$/m, "")
+            .trim();
+
+        return body.length > 35 && !/\btbd\b/i.test(body.slice(0, 260));
     }
 </script>
 
 <svelte:head>
     <title>{selectedCopy.metaTitle}</title>
-    <meta
-        name="description"
-        content={selectedCopy.metaDescription}
-    />
+    <meta name="description" content={selectedCopy.metaDescription} />
     <link rel="canonical" href="https://egouda.xyz/services" />
     <link rel="alternate" type="text/plain" href="https://egouda.xyz/llm.txt" />
 
     <meta property="og:title" content={selectedCopy.metaTitle} />
-    <meta
-        property="og:description"
-        content={selectedCopy.ogDescription}
-    />
+    <meta property="og:description" content={selectedCopy.metaDescription} />
     <meta property="og:url" content="https://egouda.xyz/services" />
     <meta property="og:image" content="https://egouda.xyz/og-image.png" />
 
     <meta name="twitter:title" content={selectedCopy.metaTitle} />
-    <meta
-        name="twitter:description"
-        content={selectedCopy.twitterDescription}
-    />
+    <meta name="twitter:description" content={selectedCopy.metaDescription} />
     <meta name="twitter:image" content="https://egouda.xyz/og-image.png" />
 </svelte:head>
 
 <section
-    class="mx-auto flex w-full max-w-5xl flex-col gap-7 py-6 md:py-10"
+    class="mx-auto flex w-full max-w-[92rem] flex-col gap-7 py-6 md:py-10"
     lang={selectedCopy.lang}
     dir={selectedCopy.dir}
 >
-    <div class="space-y-6">
-        <div class="flex flex-wrap gap-2">
+    <div class="grid gap-6 border-b pb-7">
+        <div class="flex flex-wrap items-center gap-2">
             <Badge variant="secondary">{selectedCopy.badges[0]}</Badge>
             <Badge variant="outline">{selectedCopy.badges[1]}</Badge>
+            <span class="inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs text-muted-foreground">
+                <Sparkles class="size-3.5" />
+                {selectedCopy.status}
+            </span>
         </div>
 
-        <div>
-            <h1 class="max-w-3xl text-4xl font-bold leading-tight tracking-normal md:text-5xl">
+        <div class="grid gap-3">
+            <h1 class="max-w-4xl text-4xl font-bold leading-tight tracking-normal md:text-6xl">
                 {selectedCopy.h1}
             </h1>
+            <p class="max-w-2xl text-base leading-7 text-muted-foreground md:text-lg">
+                {selectedCopy.sub}
+            </p>
         </div>
     </div>
 
-    <ol
-        aria-label="Brief workflow"
-        class="grid min-w-0 gap-3 border-y py-4 text-card-foreground md:auto-rows-fr md:grid-cols-4 md:gap-6"
-    >
-        {#each workflowSteps as step, index}
-            {@const StepIcon = step.icon}
-            <li class="relative flex min-w-0 flex-col items-center gap-3">
+    <div class="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] xl:grid-cols-[minmax(0,1fr)_21rem]">
+        <section aria-labelledby="chat-heading" class="min-w-0">
+            <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                    <h2 id="chat-heading" class="text-xl font-semibold">
+                        {selectedCopy.chatHeading}
+                    </h2>
+                    <p class="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
+                        {selectedCopy.chatSub}
+                    </p>
+                </div>
+                <Button variant="outline" size="sm" onclick={resetChat}>
+                    <RotateCcw class="size-4" />
+                    {selectedCopy.reset}
+                </Button>
+            </div>
+
+            <div class="overflow-hidden rounded-lg border bg-background">
                 <div
-                    dir="ltr"
-                    class={`grid h-full min-h-24 w-full min-w-0 overflow-hidden rounded-2xl border bg-card/60 ${
-                        selectedLanguage === "ar"
-                            ? "grid-cols-[1fr_4rem]"
-                            : "grid-cols-[4.75rem_1fr]"
-                    }`}
+                    bind:this={chatViewport}
+                    class="flex max-h-[68vh] min-h-[32rem] flex-col gap-4 overflow-y-auto p-4 md:p-5"
+                    role="log"
+                    aria-live="polite"
+                    aria-relevant="additions text"
+                    aria-atomic="false"
+                    aria-labelledby="chat-heading"
+                    aria-busy={isSending}
                 >
-                    <div
-                        class={`flex flex-col items-center justify-center gap-2 text-primary ${
-                            selectedLanguage === "ar"
-                                ? "order-2 bg-gradient-to-l from-primary/10 via-primary/5 to-transparent"
-                                : "order-1 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent"
-                        }`}
-                    >
-                        <span dir="ltr" class="text-lg font-semibold leading-none text-muted-foreground tabular-nums">
-                            0{index + 1}
-                        </span>
-                        <StepIcon class="size-5" />
+                    {#each messages as message (message.id)}
+                        <article
+                            class={`flex gap-3 ${
+                                message.role === "user"
+                                    ? selectedLanguage === "ar" ? "justify-start" : "justify-end"
+                                    : selectedLanguage === "ar" ? "justify-end" : "justify-start"
+                            }`}
+                            aria-label={message.role === "user" ? selectedCopy.visitorLabel : selectedCopy.assistantLabel}
+                        >
+                            {#if message.role === "assistant"}
+                                <div class="mt-1 grid size-8 shrink-0 place-items-center rounded-md border bg-primary/5 text-primary">
+                                    <Bot class="size-4" />
+                                </div>
+                            {/if}
+
+                            {#if message.role === "assistant"}
+                                {#if message.learned || message.question || message.suggestedReplies?.length}
+                                    <div
+                                        class="w-full max-w-[95%] rounded-lg border bg-card p-3 text-sm text-card-foreground shadow-sm md:max-w-[52rem] md:p-4"
+                                        dir={selectedCopy.dir}
+                                    >
+                                        {#if message.usedTools?.length}
+                                            <span class="mb-3 inline-flex rounded-full border bg-background px-2 py-1 text-[0.68rem] font-medium text-muted-foreground">
+                                                {selectedCopy.usedTools}
+                                            </span>
+                                        {/if}
+
+                                        {#if message.learned}
+                                            <div class="rounded-md bg-muted/45 p-3">
+                                                <p class="text-[0.7rem] font-semibold uppercase tracking-wide text-muted-foreground">
+                                                    {selectedCopy.signal}
+                                                </p>
+                                                <p class="mt-1 leading-6">{message.learned}</p>
+                                            </div>
+                                        {/if}
+
+                                        {#if message.question}
+                                            <div class="mt-3 rounded-md border bg-background/75 p-3">
+                                                <p class="text-[0.7rem] font-semibold uppercase tracking-wide text-muted-foreground">
+                                                    {selectedCopy.nextQuestion}
+                                                </p>
+                                                <p class="mt-1 text-base font-semibold leading-7">
+                                                    {message.question}
+                                                </p>
+                                            </div>
+                                        {:else}
+                                            <div class="assistant-markdown leading-6">
+                                                {@html renderAssistantMarkdown(message.content)}
+                                            </div>
+                                        {/if}
+
+                                        {#if message.suggestedReplies?.length}
+                                            <div class="mt-3 flex flex-wrap gap-2" aria-label={selectedCopy.tapToAnswer}>
+                                                {#each message.suggestedReplies as reply}
+                                                    <button
+                                                        type="button"
+                                                        class="rounded-full border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:border-primary/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-60"
+                                                        disabled={isSending}
+                                                        onclick={() => sendSuggestedReply(reply)}
+                                                    >
+                                                        {reply}
+                                                    </button>
+                                                {/each}
+                                            </div>
+                                        {/if}
+                                    </div>
+                                {:else}
+                                    <div
+                                        class="assistant-markdown w-full max-w-[95%] rounded-lg border bg-card px-4 py-3 text-sm leading-6 text-card-foreground shadow-sm md:max-w-[52rem]"
+                                        dir={selectedCopy.dir}
+                                    >
+                                        {@html renderAssistantMarkdown(message.content)}
+                                    </div>
+                                {/if}
+                            {:else}
+                                <div
+                                    class="max-w-[92%] whitespace-pre-wrap rounded-lg bg-primary px-4 py-3 text-sm leading-6 text-primary-foreground md:max-w-2xl"
+                                    dir={selectedCopy.dir}
+                                >
+                                    {message.content}
+                                </div>
+                            {/if}
+                        </article>
+                    {/each}
+
+                    {#if isSending}
+                        <div class={`flex gap-3 ${selectedLanguage === "ar" ? "justify-end" : "justify-start"}`}>
+                            <div class="mt-1 grid size-8 shrink-0 place-items-center rounded-md border bg-primary/5 text-primary">
+                                <Bot class="size-4" />
+                            </div>
+                            <div
+                                class="w-full max-w-[95%] rounded-lg border bg-card px-4 py-3 text-sm text-card-foreground shadow-sm md:max-w-[52rem]"
+                                role="status"
+                            >
+                                <div class="flex items-center gap-2 font-medium">
+                                    <span>{selectedCopy.working}</span>
+                                    <span class="typing-dots" aria-hidden="true">
+                                        <span></span>
+                                        <span></span>
+                                        <span></span>
+                                    </span>
+                                </div>
+                                <div class="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                                    {#each selectedCopy.workingSteps as step}
+                                        <span class="rounded-full border bg-background px-2 py-1">{step}</span>
+                                    {/each}
+                                </div>
+                            </div>
+                        </div>
+                    {/if}
+                </div>
+
+                <form
+                    class="border-t p-3 md:p-4"
+                    onsubmit={(event) => {
+                        event.preventDefault();
+                        sendMessage();
+                    }}
+                >
+                    <label class="sr-only" for="services-chat-input">
+                        {selectedCopy.inputLabel}
+                    </label>
+                    <div class="flex flex-col gap-3 sm:flex-row">
+                        <textarea
+                            id="services-chat-input"
+                            bind:value={draft}
+                            rows="3"
+                            class="min-h-24 flex-1 resize-none rounded-md border bg-background px-3 py-2 text-sm outline-none transition focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
+                            placeholder={selectedCopy.inputPlaceholder}
+                            onkeydown={handleKeydown}
+                            dir={selectedCopy.dir}
+                        ></textarea>
+                        <div class="flex shrink-0 gap-2 sm:self-end">
+                            {#if canDictate}
+                                <Button
+                                    type="button"
+                                    variant={isDictating ? "secondary" : "outline"}
+                                    aria-label={isDictating ? selectedCopy.stopDictation : selectedCopy.dictate}
+                                    title={isDictating ? selectedCopy.stopDictation : selectedCopy.dictate}
+                                    onclick={toggleDictation}
+                                >
+                                    {#if isDictating}
+                                        <MicOff class="size-4" />
+                                        <span class="sr-only">{selectedCopy.stopDictation}</span>
+                                    {:else}
+                                        <Mic class="size-4" />
+                                        <span class="sr-only">{selectedCopy.dictate}</span>
+                                    {/if}
+                                </Button>
+                            {/if}
+                            {#if isSending}
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onclick={stopResponse}
+                                    aria-label={selectedCopy.stop}
+                                >
+                                    <CircleStop class="size-4" />
+                                    {selectedCopy.stop}
+                                </Button>
+                            {/if}
+                            <Button type="submit" disabled={!canSend}>
+                                {#if isSending}
+                                    {selectedCopy.thinking}
+                                {:else}
+                                    <Send class="size-4" />
+                                    {selectedCopy.send}
+                                {/if}
+                            </Button>
+                        </div>
                     </div>
-                    <div
-                        class={`flex min-w-0 items-center ${
-                            selectedLanguage === "ar"
-                                ? "order-1 justify-start py-4 pl-8 pr-2 text-right"
-                                : "order-2 justify-end py-4 pl-2 pr-8 text-left"
-                        }`}
-                    >
-                        {#if selectedCopy.workflow[index].includes("&")}
-                            <span
-                                class={`flex min-w-0 max-w-[7rem] flex-col text-lg font-semibold leading-tight ${
-                                    selectedLanguage === "ar"
-                                        ? "items-start text-right"
-                                        : "items-center text-center"
-                                }`}
-                                dir={selectedCopy.dir}
-                            >
-                                {#each selectedCopy.workflow[index].split(" ") as word}
-                                    <span>{word}</span>
-                                {/each}
-                            </span>
+                    <p class="mt-2 text-xs text-muted-foreground">
+                        {#if isDictating}
+                            {selectedCopy.dictating}...
                         {:else}
-                            <span
-                                class={`min-w-0 max-w-[7rem] whitespace-normal break-normal font-semibold leading-tight [overflow-wrap:normal] ${
-                                    selectedLanguage === "ar"
-                                        ? "text-right text-base md:text-[1.05rem]"
-                                        : "text-left text-lg"
-                                }`}
-                                dir={selectedCopy.dir}
-                            >
-                                {selectedCopy.workflow[index]}
-                            </span>
+                            {selectedCopy.transcriptSaved}
                         {/if}
+                    </p>
+                </form>
+            </div>
+        </section>
+
+        <aside class="min-w-0 space-y-5">
+            <section class="rounded-lg border bg-card p-4 text-card-foreground">
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <h2 class="text-base font-semibold">
+                            {selectedCopy.packageHeading}
+                        </h2>
+                        <p class="mt-1 text-sm leading-6 text-muted-foreground">
+                            {pocPackage?.ready
+                                ? selectedCopy.readyPrefix
+                                : pocPackage?.markdown
+                                ? selectedCopy.draftPrefix
+                                : selectedCopy.packageEmpty}
+                        </p>
+                    </div>
+                    <MessageSquareText class="mt-1 size-5 text-muted-foreground" />
+                </div>
+
+                <div class="mt-4 rounded-md border bg-background p-3">
+                    <div class="flex items-center justify-between gap-3">
+                        <p class="text-sm font-medium">{selectedCopy.packageProgress}</p>
+                        <span class="text-xs text-muted-foreground">
+                            {completedPackageItems}/{packageProgress.length}
+                        </span>
+                    </div>
+                    <p class="mt-1 text-xs leading-5 text-muted-foreground">
+                        {selectedCopy.packageExpectation}
+                    </p>
+                    <div class="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+                        <div
+                            class="h-full rounded-full bg-primary transition-all duration-500"
+                            style={`width: ${packageProgressPercent}%`}
+                        ></div>
+                    </div>
+                    <div class="mt-3 grid grid-cols-2 gap-2">
+                        {#each packageProgress as item}
+                            <div
+                                class={`flex items-center gap-2 rounded-md border px-2.5 py-2 text-xs ${
+                                    item.complete
+                                        ? "border-primary/35 bg-primary/10 text-foreground"
+                                        : "bg-muted/20 text-muted-foreground"
+                                }`}
+                            >
+                                <Check class={`size-3.5 ${item.complete ? "opacity-100" : "opacity-25"}`} />
+                                <span class="min-w-0 truncate">{item.label}</span>
+                            </div>
+                        {/each}
                     </div>
                 </div>
 
-                {#if index < workflowSteps.length - 1}
-                    <span aria-hidden="true" class="grid place-items-center text-muted-foreground md:hidden">
-                        <ArrowDown class="size-4" />
-                    </span>
-                    <span
-                        aria-hidden="true"
-                        class={`absolute top-1/2 z-10 hidden size-5 -translate-y-1/2 place-items-center text-muted-foreground md:grid ${
-                            selectedLanguage === "ar" ? "-left-5" : "-right-5"
-                        }`}
-                    >
+                <details class="mt-3 rounded-md border bg-background">
+                    <summary class="cursor-pointer px-3 py-2 text-sm font-medium">
+                        {selectedCopy.viewDraft}
+                    </summary>
+                    <div class="max-h-72 overflow-auto border-t p-3">
+                        {#if pocPackage?.markdown}
+                            <pre class="whitespace-pre-wrap break-words text-xs leading-5 text-muted-foreground">{pocPackage.markdown}</pre>
+                        {:else}
+                            <p class="text-sm leading-6 text-muted-foreground">
+                                {selectedCopy.packageEmpty}
+                            </p>
+                        {/if}
+                    </div>
+                </details>
+
+                <div class="mt-3 flex flex-col gap-2">
+                    <Button variant="outline" onclick={copyReport}>
+                        {#if copiedReport}
+                            <Check class="size-4" />
+                            {selectedCopy.copied}
+                        {:else}
+                            <Copy class="size-4" />
+                            {selectedCopy.copyReport}
+                        {/if}
+                    </Button>
+                    <Button href="/portfolio" variant="outline">
+                        {selectedCopy.portfolio}
                         {#if selectedLanguage === "ar"}
                             <ArrowLeft class="size-4" />
                         {:else}
                             <ArrowRight class="size-4" />
                         {/if}
-                    </span>
-                {/if}
-            </li>
-        {/each}
-    </ol>
-
-    <section aria-labelledby="copy-heading" class="min-w-0 text-card-foreground">
-        <div class="grid gap-5">
-            <div class="grid gap-2">
-                <h2 id="copy-heading" class="text-sm font-medium">
-                    {selectedCopy.aiHeading}
-                </h2>
-
-                <div class="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4" role="radiogroup" aria-labelledby="copy-heading">
-                    {#each providerOptions as provider}
-                        <button
-                            type="button"
-                            data-testid={`provider-${provider.key}`}
-                            role="radio"
-                            aria-checked={selectedProvider === provider.key}
-                            class={`flex min-h-16 min-w-0 items-center gap-3 rounded-md border p-3 text-start transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none ${
-                                selectedProvider === provider.key
-                                    ? "border-primary bg-primary/5 text-foreground shadow-sm"
-                                    : "bg-background text-muted-foreground hover:bg-accent hover:text-foreground"
-                            }`}
-                            onclick={() => {
-                                selectedProvider = provider.key;
-                                copied = false;
-                            }}
-                        >
-                            {#if provider.logo}
-                                <img
-                                    src={provider.logo}
-                                    alt=""
-                                    class={`size-8 shrink-0 object-contain ${
-                                        provider.key === "chatgpt" ? "dark:invert" : ""
-                                    }`}
-                                />
-                            {:else}
-                                <Bot class="size-8 shrink-0 text-primary" />
-                            {/if}
-                            <span class="block min-w-0 text-sm font-medium">
-                                {provider.label[selectedLanguage]}
-                            </span>
-                        </button>
-                    {/each}
+                    </Button>
                 </div>
-                <p class="text-sm text-muted-foreground">
-                    {selectedCopy.providerNote}
+            </section>
+
+            <section class="rounded-lg border bg-card p-4 text-card-foreground">
+                <h2 class="text-base font-semibold">
+                    {selectedCopy.emailHeading}
+                </h2>
+                <p class="mt-1 text-sm leading-6 text-muted-foreground">
+                    {selectedCopy.emailSub}
                 </p>
-            </div>
 
-            <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                <Button data-testid="copy-prompt" onclick={copyPrompt} class="w-full sm:w-auto">
-                    {#if copied}
-                        <Check class="size-4" />
-                        {selectedCopy.copied}
-                    {:else}
-                        <Copy class="size-4" />
-                        {selectedCopy.copyPrompt}
-                    {/if}
-                </Button>
-                <Button
-                    data-testid="email-brief"
-                    variant="outline"
-                    class="w-full sm:w-auto"
-                    onclick={copyEmail}
+                <form
+                    class="mt-4 space-y-3"
+                    onsubmit={(event) => {
+                        event.preventDefault();
+                        submitPackage();
+                    }}
                 >
-                    {#if emailCopied}
-                        <Check class="size-4" />
-                        {selectedCopy.emailCopied}
-                    {:else}
-                        <Copy class="size-4" />
-                        {selectedCopy.copyEmail}
-                    {/if}
-                </Button>
-                <Button href="/portfolio" variant="outline" class="w-full sm:w-auto">
-                    {selectedCopy.portfolio}
-                    {#if selectedLanguage === "ar"}
-                        <ArrowLeft class="size-4" />
-                    {:else}
-                        <ArrowRight class="size-4" />
-                    {/if}
-                </Button>
-            </div>
-        </div>
+                    <label class="block text-sm font-medium" for="visitor-email">
+                        {selectedCopy.emailLabel}
+                    </label>
+                    <input
+                        id="visitor-email"
+                        type="email"
+                        bind:value={visitorEmail}
+                        placeholder={selectedCopy.emailPlaceholder}
+                        class="h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
+                        dir="ltr"
+                    />
+                    <Button type="submit" disabled={!canSubmit} class="w-full">
+                        {#if isSubmitting}
+                            {selectedCopy.submitting}
+                        {:else}
+                            <Mail class="size-4" />
+                            {selectedCopy.submit}
+                        {/if}
+                    </Button>
+                </form>
 
-        <details class="mt-6 min-w-0 rounded-md border bg-background">
-            <summary class="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 text-sm font-medium">
-                {selectedCopy.fullPrompt}
-                <ChevronDown class="size-4 text-muted-foreground" />
-            </summary>
-            <pre class="max-h-[520px] min-w-0 overflow-auto whitespace-pre-wrap break-all border-t p-4 text-xs leading-6 text-muted-foreground"><code>{selectedPrompt.prompt}</code></pre>
-        </details>
-    </section>
+                {#if submitMessage}
+                    <p class="mt-3 text-sm leading-6 text-muted-foreground">
+                        {submitMessage}
+                    </p>
+                {/if}
 
-    <p class="text-sm leading-6 text-muted-foreground">
-        {selectedCopy.footerPrefix}
-        <a
-            class="font-medium text-primary underline-offset-4 hover:underline"
-            href={contactHref}
-        >
-            {contactEmail}
-        </a>,
-        {selectedCopy.footerSuffix}
-    </p>
+                {#if mailtoHref}
+                    <Button href={mailtoHref} variant="outline" class="mt-3 w-full">
+                        <Mail class="size-4" />
+                        {selectedCopy.mailDraft}
+                    </Button>
+                {/if}
+            </section>
+        </aside>
+    </div>
 </section>
+
+<style>
+    .assistant-markdown {
+        overflow-wrap: anywhere;
+    }
+
+    .assistant-markdown :global(:first-child) {
+        margin-top: 0;
+    }
+
+    .assistant-markdown :global(:last-child) {
+        margin-bottom: 0;
+    }
+
+    .assistant-markdown :global(p) {
+        margin: 0 0 0.8rem;
+    }
+
+    .assistant-markdown :global(ul),
+    .assistant-markdown :global(ol) {
+        margin: 0.65rem 0 0.9rem;
+        padding-inline-start: 1.25rem;
+    }
+
+    .assistant-markdown :global(li) {
+        margin: 0.3rem 0;
+    }
+
+    .assistant-markdown :global(strong) {
+        color: hsl(var(--foreground));
+        font-weight: 700;
+    }
+
+    .assistant-markdown :global(a) {
+        color: hsl(var(--primary));
+        text-decoration: underline;
+        text-underline-offset: 0.2em;
+    }
+
+    .assistant-markdown :global(code) {
+        border: 1px solid hsl(var(--border));
+        border-radius: 0.25rem;
+        background: hsl(var(--muted) / 0.35);
+        padding: 0.08rem 0.3rem;
+        font-size: 0.92em;
+    }
+
+    .typing-dots {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .typing-dots span {
+        width: 0.35rem;
+        height: 0.35rem;
+        border-radius: 999px;
+        background: currentColor;
+        opacity: 0.35;
+        animation: typing-pulse 1s ease-in-out infinite;
+    }
+
+    .typing-dots span:nth-child(2) {
+        animation-delay: 0.15s;
+    }
+
+    .typing-dots span:nth-child(3) {
+        animation-delay: 0.3s;
+    }
+
+    @keyframes typing-pulse {
+        0%,
+        80%,
+        100% {
+            transform: translateY(0);
+            opacity: 0.35;
+        }
+
+        40% {
+            transform: translateY(-0.18rem);
+            opacity: 0.9;
+        }
+    }
+</style>

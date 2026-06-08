@@ -1,4 +1,5 @@
 <script lang="ts">
+    import type { Snippet } from "svelte";
     import * as Avatar from "$lib/components/ui/avatar";
     import { Button } from "$lib/components/ui/button";
     import { Badge } from "$lib/components/ui/badge";
@@ -14,7 +15,17 @@
      * - className: append your own classes to customize the container.
      * - scrollable: when false, lets the page own vertical scrolling.
      */
-    let { className = "", scrollable = true, ...restProps }: { className?: string; scrollable?: boolean; [key: string]: any } = $props();
+    let {
+        className = "",
+        scrollable = true,
+        children,
+        ...restProps
+    }: {
+        className?: string;
+        scrollable?: boolean;
+        children?: Snippet;
+        [key: string]: any;
+    } = $props();
 
     const currentYear = new Date().getFullYear();
     const yearsOfExperience = currentYear - 2019;
@@ -532,6 +543,6 @@
                 </ul>
             </div>
         </div>
-        <slot />
+        {@render children?.()}
     </div>
 </section>

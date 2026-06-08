@@ -17,7 +17,9 @@ Simple, minimalistic, cheap to run.
 - **Components**: shadcn-svelte (bits-ui) — button, badge, card, navigation-menu, sonner
 - **Blog styles**: Custom `article.prose` class in `src/app.css` with RTL support
 
-# Claude Code Skills
+# Agent Skills
+- Claude Code skills: `.claude/skills/blog/SKILL.md` and `.claude/skills/arabify/SKILL.md`
+- Codex skills: `.codex/skills/blog/SKILL.md` and `.codex/skills/arabify/SKILL.md`
 - `/blog new "title"` or `/blog edit slug` — Blog writing assistant
 - `/arabify slug` — Translate blog post to Egyptian Arabic
 

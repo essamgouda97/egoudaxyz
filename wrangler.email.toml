@@ -1,0 +1,12 @@
+name = "egoudaxyz-services-email"
+main = "workers/services-email-relay.ts"
+compatibility_date = "2026-05-26"
+account_id = "75a296a206ff858a9346c08eb4eaa406"
+workers_dev = true
+
+[observability]
+enabled = true
+
+[[send_email]]
+name = "SEND_EMAIL"
+allowed_sender_addresses = ["me@egouda.xyz"]

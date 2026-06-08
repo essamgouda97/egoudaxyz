@@ -78,12 +78,61 @@ Internet → Cloudflare → Caddy (443) → Frontend (3000)
    export PUBLIC_CONVEX_SITE_URL="https://your-site.convex.site"
    export AUTH_GITHUB_ID="your_github_oauth_client_id"
    export AUTH_GITHUB_SECRET="your_github_oauth_client_secret"
+   export DEEPSEEK_API_KEY="your_deepseek_api_key"
+   export CLOUDFLARE_API_TOKEN="your_cloudflare_api_token"
+   export CLOUDFLARE_ACCOUNT_ID="your_cloudflare_account_id"
+   export CLOUDFLARE_EMAIL_WORKER_URL="https://egoudaxyz-services-email.<subdomain>.workers.dev"
+   export CLOUDFLARE_EMAIL_WORKER_SECRET="your_worker_relay_secret"
+   export SERVICES_TOOL_TIMEOUT_MS="12000"
+   export REPORT_EMAIL_FROM="me@egouda.xyz"
+   export REPORT_EMAIL_TO="me@egouda.xyz"
    ```
    Then reload: `source ~/.zshrc`
 
    The SSH key is auto-detected from `~/.ssh/id_ed25519.pub` or `~/.ssh/id_rsa.pub`.
 
    App secrets are automatically synced to the server on every `deploy`.
+
+   The services intake chat uses DeepSeek from the SvelteKit server. It can pass
+   controlled tools to DeepSeek: `fetch_web_page` uses Cloudflare Browser Run's
+   Markdown endpoint through `CLOUDFLARE_API_TOKEN` and
+   `CLOUDFLARE_ACCOUNT_ID`, while `web_search` is disabled unless
+   `BRAVE_SEARCH_API_KEY` or a private `SERVICES_WEB_SEARCH_API_URL` is
+   configured. The chat returns a draft POC package on every turn and only
+   unlocks submission when the final package is complete. The POC package email
+   uses Cloudflare Email Service. Prefer
+   `CLOUDFLARE_EMAIL_WORKER_URL` + `CLOUDFLARE_EMAIL_WORKER_SECRET`, which call
+   the `egoudaxyz-services-email` Worker with a `send_email` binding. The
+   endpoint can fall back to REST when `CLOUDFLARE_API_TOKEN` and
+   `CLOUDFLARE_ACCOUNT_ID` are configured. If neither is configured, the UI
+   falls back to a mail draft and copyable report. Cloudflare delivery includes
+   both Markdown and HTML report attachments. `REPORT_EMAIL_FROM` defaults to
+   `me@egouda.xyz` and must be allowed by Cloudflare Email Service for the
+   domain.
+   For deterministic testing without model calls, set `SERVICES_CHAT_MODE=mock`.
+   Otherwise `DEEPSEEK_API_KEY` is required, including in local dev.
+   To test the successful sent-email UI without sending a real email, set
+   `REPORT_EMAIL_MODE=mock`.
+   Once you have a DeepSeek key locally, run `npm run test:services-live` with
+   `DEEPSEEK_API_KEY` set. It calls DeepSeek but forces email delivery into mock
+   mode, so it verifies the full package/report path without sending a real
+   email.
+   `DEEPSEEK_API_URL` is available only as a private local test override; leave
+   it empty for production. `DEEPSEEK_TIMEOUT_MS` defaults to `30000`.
+   `CLOUDFLARE_BROWSER_MARKDOWN_API_URL`, `SERVICES_WEB_SEARCH_API_URL`, and
+   `SERVICES_WEB_SEARCH_API_KEY` are private test/custom-provider overrides;
+   leave them empty for production unless intentionally wiring a search
+   provider. `SERVICES_TOOL_TIMEOUT_MS` defaults to `12000`.
+   To send one real Cloudflare Email Service verification email, set
+   `CLOUDFLARE_EMAIL_WORKER_URL`, `CLOUDFLARE_EMAIL_WORKER_SECRET`, and
+   optionally `REPORT_EMAIL_FROM` / `REPORT_EMAIL_TO`, then run
+   `CONFIRM_SEND_REAL_EMAIL=yes npm run test:services-email-live`.
+   `CLOUDFLARE_EMAIL_API_URL` is available only as a private local test
+   override; leave it empty for production. `CLOUDFLARE_EMAIL_TIMEOUT_MS`
+   defaults to `20000`.
+   Public intake endpoints are rate-limited by client address. Defaults are
+   `SERVICES_CHAT_RATE_LIMIT=30` per 15 minutes and
+   `SERVICES_PACKAGE_RATE_LIMIT=8` per 30 minutes.
 
 2. **Create infrastructure:**
    ```sh

@@ -13,7 +13,12 @@
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
+		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+		"test:services-chat": "node scripts/test-services-chat.mjs",
+		"test:services-live": "node scripts/test-services-live.mjs",
+		"test:services-email-live": "node scripts/test-services-email-live.mjs",
+		"deploy:services-email-worker": "npx wrangler deploy --config wrangler.email.toml",
+		"secret:services-email-worker": "npx wrangler secret put EMAIL_RELAY_SECRET --config wrangler.email.toml"
 	},
 	"devDependencies": {
 		"@internationalized/date": "^3.10.0",
@@ -45,20 +50,21 @@
 		"vite-plugin-devtools-json": "^1.0.0"
 	},
 	"dependencies": {
-		"@chenglou/pretext": "^0.0.3",
+		"@chenglou/pretext": "^0.0.7",
 		"@fontsource/cairo": "^5.2.7",
 		"@fontsource/space-grotesk": "^5.2.10",
 		"@tailwindcss/postcss": "^4.1.17",
 		"embla-carousel-svelte": "^8.6.0",
 		"gray-matter": "^4.0.3",
 		"highlight.js": "^11.11.1",
-		"html2canvas-pro": "^1.5.13",
-		"jspdf": "^3.0.3",
-		"jspdf-html2canvas-pro": "^1.5.221",
 		"katex": "^0.16.44",
 		"markdown-it": "^14.1.0",
 		"mermaid": "^11.13.0",
 		"mode-watcher": "^1.1.0",
-		"puppeteer": "^24.10.0"
+		"puppeteer": "^24.10.0",
+		"zod": "^4.4.3"
+	},
+	"overrides": {
+		"cookie": "^1.1.1"
 	}
 }

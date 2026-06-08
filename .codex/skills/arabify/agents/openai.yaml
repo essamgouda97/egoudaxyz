@@ -1,0 +1,4 @@
+interface:
+  display_name: "Arabify"
+  short_description: "Translate posts to Egyptian Arabic"
+  default_prompt: "Use $arabify to translate an English blog post to Egyptian Arabic."
