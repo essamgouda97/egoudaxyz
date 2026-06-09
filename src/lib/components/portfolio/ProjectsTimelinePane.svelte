@@ -1,7 +1,7 @@
 <script lang="ts">
     import * as Carousel from "$lib/components/ui/carousel";
 
-    type ProjectStatus = "failed" | "in-progress" | "success";
+    type ProjectStatus = "discontinued" | "in-progress" | "success";
 
     interface Project {
         title: string;
@@ -15,7 +15,7 @@
     export let scrollable: boolean = true;
 
     const statusColors: Record<ProjectStatus, string> = {
-        failed: "bg-red-500",
+        discontinued: "bg-muted-foreground",
         "in-progress": "bg-yellow-500",
         success: "bg-green-500",
     };
@@ -25,7 +25,7 @@
             title: "Dispatcher Agent",
             description:
                 "Explored a truck dispatcher agentic workflow for truck companies.",
-            status: "failed" as const,
+            status: "discontinued" as const,
             year: 2026,
         },
         {
@@ -39,7 +39,7 @@
             title: "Hala Qeshta Franchise",
             description:
                 "Tried opening Hala Qeshta franchise in Montreal for egyptian desserts.",
-            status: "failed" as const,
+            status: "discontinued" as const,
             year: 2025,
             links: [
                 { label: "Company Site", url: "https://www.ewanagroup.com/" },
@@ -53,7 +53,7 @@
             title: "Santagrams.ai",
             description:
                 "Created an AI powered text to video santagram message generator for christmas while doing a tiktok marketing campaign.",
-            status: "failed" as const,
+            status: "discontinued" as const,
             year: 2025,
             links: [{ label: "Site Link", url: "https://www.santagrams.ai/" }],
         },
