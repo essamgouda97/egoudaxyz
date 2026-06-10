@@ -92,7 +92,7 @@
                         <img
                             src="/portfolio/github-logo.png"
                             alt="GitHub"
-                            class="size-4"
+                            class="size-4 invert dark:invert-0"
                         />
                         GitHub
                     </Button>
