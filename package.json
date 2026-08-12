@@ -14,11 +14,7 @@
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
-		"test:services-chat": "node scripts/test-services-chat.mjs",
-		"test:services-live": "node scripts/test-services-live.mjs",
-		"test:services-email-live": "node scripts/test-services-email-live.mjs",
-		"deploy:services-email-worker": "npx wrangler deploy --config wrangler.email.toml",
-		"secret:services-email-worker": "npx wrangler secret put EMAIL_RELAY_SECRET --config wrangler.email.toml"
+		"test:services": "node scripts/test-services.mjs"
 	},
 	"devDependencies": {
 		"@internationalized/date": "^3.10.0",

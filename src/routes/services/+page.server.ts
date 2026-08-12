@@ -4,6 +4,11 @@ import {
     SERVICES_LANGUAGE_KEY,
     type ServicesLanguage,
 } from "$lib/services-language";
+import { env } from "$env/dynamic/private";
+import {
+    readServicesOfferConfig,
+    readServicesPaidBookingUrl,
+} from "$lib/server/services-offer";
 import type { PageServerLoad } from "./$types";
 
 const DEFAULT_LANGUAGE: ServicesLanguage = "en";
@@ -17,14 +22,29 @@ export const load: PageServerLoad = ({ cookies, url }) => {
             sameSite: "lax",
         });
 
-        return {
-            language: queryLanguage,
-        };
+        return buildPageData(queryLanguage);
     }
 
     const language = cookies.get(SERVICES_LANGUAGE_KEY);
 
-    return {
-        language: isServicesLanguage(language) ? language : DEFAULT_LANGUAGE,
-    };
+    return buildPageData(
+        isServicesLanguage(language) ? language : DEFAULT_LANGUAGE,
+    );
 };
+
+function buildPageData(language: ServicesLanguage) {
+    const offer = readServicesOfferConfig({
+        SERVICES_PRICE_CENTS: env.SERVICES_PRICE_CENTS,
+        SERVICES_CURRENCY: env.SERVICES_CURRENCY,
+    });
+    const paidBookingUrl = readServicesPaidBookingUrl(
+        env.SERVICES_PAID_BOOKING_URL,
+    );
+
+    return {
+        language,
+        offer,
+        bookingConfigured: Boolean(paidBookingUrl),
+        paidBookingUrl,
+    };
+}

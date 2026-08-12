@@ -1,1131 +1,1024 @@
 <script lang="ts">
-    import { onMount, tick } from "svelte";
-    import { browser } from "$app/environment";
-    import MarkdownIt from "markdown-it";
-    import { Badge } from "$lib/components/ui/badge";
-    import { Button } from "$lib/components/ui/button";
+    import FinanceWorkflowDemo from "$lib/components/services/FinanceWorkflowDemo.svelte";
+    import HomeServerWorkflowDemo from "$lib/components/services/HomeServerWorkflowDemo.svelte";
+    import PaperworkWorkflowDemo from "$lib/components/services/PaperworkWorkflowDemo.svelte";
     import { servicesLanguage } from "$lib/stores/services-language.svelte";
-    import type { PageData } from "./$types";
     import {
+        ArrowDown,
         ArrowLeft,
         ArrowRight,
-        Bot,
+        CalendarDays,
         Check,
-        CircleStop,
-        Copy,
+        LoaderCircle,
         Mail,
-        Mic,
-        MicOff,
-        MessageSquareText,
-        RotateCcw,
         Send,
-        Sparkles,
+        ShieldCheck,
     } from "@lucide/svelte";
+    import type { PageData } from "./$types";
 
     let { data }: { data: PageData } = $props();
 
-    const storageKey = "egouda-services-chat-v1";
-    const markdown = new MarkdownIt({
-        html: false,
-        linkify: true,
-        breaks: true,
+    let question = $state("");
+    let questionAnswer = $state("");
+    let questionError = $state("");
+    let askingQuestion = $state(false);
+    let languageControlsReady = $state(false);
+
+    $effect(() => {
+        servicesLanguage.current = data.language;
+        languageControlsReady = true;
     });
 
-    type LanguageKey = "en" | "ar";
-    type ChatRole = "assistant" | "user";
-
-    type ChatMessage = {
-        id: string;
-        role: ChatRole;
-        content: string;
-        createdAt: string;
-        learned?: string | null;
-        question?: string | null;
-        suggestedReplies?: string[];
-        usedTools?: string[];
-    };
-
-    type PocPackage = {
-        title: string;
-        markdown: string;
-        html?: string;
-        ready: boolean;
-        updatedAt?: string;
-    };
-
-    type StoredChat = {
-        messages: ChatMessage[];
-        package: PocPackage | null;
-        signalProgress?: boolean[];
-        visitorEmail: string;
-        updatedAt: string;
-    };
-
-    type SpeechRecognitionResult = {
-        readonly isFinal: boolean;
-        readonly [index: number]: { readonly transcript: string };
-    };
-
-    type SpeechRecognitionEvent = Event & {
-        readonly resultIndex: number;
-        readonly results: {
-            readonly length: number;
-            readonly [index: number]: SpeechRecognitionResult;
-        };
-    };
-
-    type SpeechRecognitionInstance = EventTarget & {
-        continuous: boolean;
-        interimResults: boolean;
-        lang: string;
-        onresult: ((event: SpeechRecognitionEvent) => void) | null;
-        onend: (() => void) | null;
-        onerror: (() => void) | null;
-        start: () => void;
-        stop: () => void;
-    };
-
-    type SpeechRecognitionConstructor = new () => SpeechRecognitionInstance;
+    const language = $derived(
+        languageControlsReady ? servicesLanguage.current : data.language,
+    );
 
     const pageCopy = {
         en: {
             lang: "en",
             dir: "ltr",
-            metaTitle: "Agentic Pipeline Intake | Essam Gouda",
-            metaDescription:
-                "Chat with Essam Gouda's agentic pipeline intake agent. It grills your workflow, saves the transcript locally, and packages a POC brief for follow-up.",
-            badges: ["Agents consultant", "Free design POC"],
-            h1: "Let your workflow brief my agent.",
-            sub:
-                "Answer the grill. When the POC package is ready, leave your email and it sends me the transcript plus the brief.",
-            status: "DeepSeek intake",
-            transcriptSaved: "Transcript saves in this browser.",
-            chatHeading: "Pipeline intake",
-            chatSub:
-                "One question at a time. It looks for contradictions, vague handoffs, missing owners, and the smallest useful POC.",
-            inputLabel: "Reply",
-            inputPlaceholder: "Describe the workflow you want to improve...",
-            send: "Send",
-            thinking: "Thinking",
-            working: "Working",
-            workingSteps: ["Reading context", "Drafting brief"],
-            stop: "Stop",
-            stopped: "Stopped. Send a shorter answer or try again.",
-            signal: "Planning agent",
-            nextQuestion: "Next question",
-            tapToAnswer: "Tap to answer",
-            usedTools: "Checked public context",
-            dictate: "Dictate",
-            stopDictation: "Stop dictation",
-            dictating: "Listening",
-            reset: "Reset chat",
-            copied: "Copied",
-            copyReport: "Copy report",
-            emailHeading: "Send the POC package",
-            emailSub:
-                "Leave an email so I can reply after reviewing the transcript and package.",
-            emailLabel: "Your email",
-            emailPlaceholder: "you@company.com",
-            submit: "Send package",
-            submitting: "Sending",
-            submitted: "Package prepared",
-            submitConfigured:
-                "The package was sent. I have the transcript, report, and reply email.",
-            submitFallback:
-                "The package is ready locally. Email delivery is not configured yet, so use the mail draft or copied report.",
-            packageHeading: "POC package",
-            packageEmpty:
-                "The draft package appears here as the chat develops.",
-            packageProgress: "Signals collected",
-            packageExpectation:
-                "Ends at 6/6, then I ask for your email. Most briefs take 6-8 short answers.",
-            packageSections: ["Context", "Workflow", "Pain", "Data", "Boundaries", "POC"],
-            viewDraft: "View draft Markdown",
-            draftPrefix: "Drafting as you answer",
-            mailDraft: "Open mail draft",
-            portfolio: "Check my Portfolio",
-            configMissing:
-                "The intake agent is temporarily unavailable. Please try again in a moment.",
-            genericError:
-                "I could not get a clean response. Send that again.",
+            title: "One-week AI workflow sprint | Essam Gouda",
+            description:
+                "One custom AI workflow built around your work and data for $250. " +
+                "Requirements on Sunday, one focused build week, then setup and review.",
+            mark: "SaaSaaS!!",
+            markLong: "SaaS as a Service.",
+            h1: "Your weird workflow. Working in one week.",
             intro:
-                "I am Essam's intake agent. I will grill the workflow until there is enough signal for a free agentic design POC. Start with the workflow you want to improve: who does it, what triggers it, and what makes it painful today?",
-            starterLearned: "I’ll build the POC package as you answer.",
-            starterQuestion: "Which workflow should we improve first?",
-            starterReplies: ["Customer support intake", "Ops handoff", "Document review"],
-            readyPrefix: "Ready for package",
-            assistantLabel: "Essam intake agent",
-            visitorLabel: "You",
+                "I build one specific AI workflow around your day-to-day work and your own data.",
+            priceSuffix: "once · one focused sprint",
+            primaryCta: "See what that means",
+            secondaryCta: "Pay + book Sunday",
+            proofHeading: "This kind of thing.",
+            proofSub: "Every number, name, file, and event is fictional.",
+            demoLabels: ["Your money", "Your house", "Your paperwork"],
+            processHeading: "Two Sundays. One build week.",
+            process: [
+                {
+                    title: "Sunday · requirements",
+                    text: "We pick one painful workflow and define done.",
+                },
+                {
+                    title: "Monday–Saturday · build",
+                    text: "I wire the workflow around your tools and data.",
+                },
+                {
+                    title: "Sunday · setup + review",
+                    text: "Two hours. We install it, run it, and hand it over.",
+                },
+            ],
+            packageHeading: "One workflow. Fixed price.",
+            packageItems: [
+                "Requirements call",
+                "One focused build week",
+                "Two-hour setup + review",
+                "Your tools. Your data. Your control.",
+            ],
+            paymentSafe: "Cal.com confirms the slot only after Stripe payment.",
+            checkout: "Pay securely + choose Sunday",
+            checkoutUnavailable: "Paid booking opens soon.",
+            checkoutUnavailableSub:
+                "Ask a question or email me before the first slot opens.",
+            questionsHeading: "One question? Ask it.",
+            questionPlaceholder: "Will this work with my spreadsheets and email?",
+            ask: "Ask",
+            asking: "Asking",
+            questionPrivacy: "Sent to DeepSeek. Do not paste private or client data.",
+            emailInstead: "Email egouda@bokralabs.com",
+            synthetic: "Public demos use synthetic data only.",
         },
         ar: {
             lang: "ar",
             dir: "rtl",
-            metaTitle: "Agentic Pipeline Intake | عصام جودة",
-            metaDescription:
-                "اتكلم مع وكيل عصام جودة لتصميم AI pipeline. سيحلل سير العمل، يحفظ المحادثة محليًا، ويجهز POC brief للمتابعة.",
-            badges: ["استشارات AI Agents", "تصميم POC مجاني"],
-            h1: "خلّي شغلك يشرح نفسه للـ AI.",
-            sub:
-                "جاوب على الأسئلة. لما الباكدج تجهز، سيب إيميلك عشان أبعتلك بعد ما أراجع الترانسكريبت والبريف.",
-            status: "DeepSeek intake",
-            transcriptSaved: "المحادثة محفوظة في المتصفح ده.",
-            chatHeading: "تحليل الـ Pipeline",
-            chatSub:
-                "سؤال واحد كل مرة. بيدور على التناقضات، التسليمات المبهمة، ملاك القرار الغايبين، وأصغر POC مفيد.",
-            inputLabel: "ردّك",
-            inputPlaceholder: "اشرح سير العمل اللي عايز تحسّنه...",
-            send: "إرسال",
-            thinking: "يفكر",
-            working: "شغال",
-            workingSteps: ["بيقرأ السياق", "بيجهز البريف"],
-            stop: "إيقاف",
-            stopped: "وقفت الرد. ابعت إجابة أقصر أو جرّب تاني.",
-            signal: "وكيل التخطيط",
-            nextQuestion: "السؤال الجاي",
-            tapToAnswer: "اضغط للرد",
-            usedTools: "راجع سياق عام",
-            dictate: "إملاء",
-            stopDictation: "إيقاف الإملاء",
-            dictating: "بيسمع",
-            reset: "ابدأ من جديد",
-            copied: "تم النسخ",
-            copyReport: "انسخ التقرير",
-            emailHeading: "ابعث POC package",
-            emailSub:
-                "سيب إيميلك عشان أقدر أرد عليك بعد مراجعة المحادثة والباكدج.",
-            emailLabel: "إيميلك",
-            emailPlaceholder: "you@company.com",
-            submit: "إرسال الباكدج",
-            submitting: "جاري الإرسال",
-            submitted: "الباكدج جاهزة",
-            submitConfigured:
-                "تم إرسال الباكدج. وصلني الترانسكريبت، التقرير، وإيميل الرد.",
-            submitFallback:
-                "الباكدج جاهزة محليًا. إرسال الإيميل من السيرفر غير مضبوط حاليًا، استخدم مسودة الإيميل أو انسخ التقرير.",
-            packageHeading: "POC package",
-            packageEmpty:
-                "مسودة الباكدج بتظهر هنا مع تطور المحادثة.",
-            packageProgress: "الإشارات اللي اتجمعت",
-            packageExpectation:
-                "بتخلص عند ٦/٦، وبعدها هطلب الإيميل. غالبًا ٦-٨ إجابات قصيرة.",
-            packageSections: ["السياق", "السير", "الألم", "الداتا", "الحدود", "الـ POC"],
-            viewDraft: "اعرض مسودة Markdown",
-            draftPrefix: "مسودة بتتحدث مع إجاباتك",
-            mailDraft: "افتح مسودة إيميل",
-            portfolio: "شوف البورتفوليو",
-            configMissing:
-                "وكيل التحليل غير متاح مؤقتًا. جرّب تاني بعد لحظة.",
-            genericError:
-                "الرد طلع مش واضح. ابعته تاني.",
+            title: "AI workflow في أسبوع | عصام جودة",
+            description:
+                "AI workflow واحدة معمولة على شغلك وداتا بتاعتك بـ250 دولار. " +
+                "متطلبات يوم الأحد، أسبوع شغل، وبعدها setup ومراجعة.",
+            mark: "SaaSaaS!!",
+            markLong: "SaaS as a Service.",
+            h1: "الـworkflow الغريبة بتاعتك. شغالة في أسبوع.",
             intro:
-                "أنا وكيل عصام للتحليل الأولي. هسألك لحد ما يكون عندي تفاصيل كفاية لتصميم POC مجاني لـ agentic pipeline. ابدأ بسير العمل اللي عايز تحسّنه: مين بيعمله، إيه اللي بيبدأه، وإيه المؤلم فيه دلوقتي؟",
-            starterLearned: "هجهز الباكدج وإنت بتجاوب.",
-            starterQuestion: "أنهي workflow نبدأ نحسّنه؟",
-            starterReplies: ["دعم العملاء", "تسليمات العمليات", "مراجعة مستندات"],
-            readyPrefix: "جاهزة كباكدج",
-            assistantLabel: "وكيل عصام",
-            visitorLabel: "أنت",
+                "ببني AI workflow واحدة محددة حوالين شغلك اليومي " +
+                "وداتا بتاعتك.",
+            priceSuffix: "مرة واحدة · sprint واحدة",
+            primaryCta: "شوف أمثلة",
+            secondaryCta: "ادفع واحجز الأحد",
+            proofHeading: "حاجات زي دي.",
+            proofSub: "كل الأرقام والأسامي والملفات والأحداث خيالية.",
+            demoLabels: ["فلوسك", "بيتك", "ورقك"],
+            processHeading: "اتنين أحد. وأسبوع شغل.",
+            process: [
+                {
+                    title: "الأحد · متطلبات",
+                    text: "بنختار workflow واحدة موجعة ونحدد شكل النجاح.",
+                },
+                {
+                    title: "الاثنين–السبت · بناء",
+                    text: "بربط الـworkflow بأدواتك وداتا بتاعتك.",
+                },
+                {
+                    title: "الأحد · setup ومراجعة",
+                    text: "ساعتين. بنركبها، نجربها، وأسلمهالك.",
+                },
+            ],
+            packageHeading: "workflow واحدة. سعر ثابت.",
+            packageItems: [
+                "مكالمة متطلبات",
+                "أسبوع شغل مركز",
+                "ساعتين setup ومراجعة",
+                "أدواتك. داتا بتاعتك. تحكمك.",
+            ],
+            paymentSafe: "Cal.com بيأكد الـslot بعد الدفع على Stripe بس.",
+            checkout: "ادفع بأمان واختار الأحد",
+            checkoutUnavailable: "الحجز المدفوع هيفتح قريب.",
+            checkoutUnavailableSub:
+                "اسأل سؤال أو ابعتلي إيميل قبل أول slot.",
+            questionsHeading: "سؤال واحد؟ اسأله.",
+            questionPlaceholder: "ينفع مع الـspreadsheets والإيميل بتوعي؟",
+            ask: "اسأل",
+            asking: "بيجاوب",
+            questionPrivacy: "بيتبعث لـDeepSeek. متبعتش داتا خاصة أو داتا عميل.",
+            emailInstead: "ابعت لـ egouda@bokralabs.com",
+            synthetic: "كل الـdemos العامة بداتا خيالية بس.",
         },
     } as const;
 
-    const packageSectionNeedles = [
-        ["business snapshot"],
-        ["current workflow"],
-        ["pain and opportunity"],
-        ["tools, data, and access"],
-        ["human review boundaries"],
-        ["recommended free design poc"],
-    ] as const;
-    const emptySignalProgress = () => packageSectionNeedles.map(() => false);
+    const copy = $derived(pageCopy[language]);
 
-    const selectedLanguage = $derived<LanguageKey>(
-        browser ? servicesLanguage.current : data.language,
-    );
-    const selectedCopy = $derived(pageCopy[selectedLanguage]);
+    async function askQuestion(event: SubmitEvent) {
+        event.preventDefault();
+        if (askingQuestion || question.trim().length < 2) return;
 
-    let messages = $state<ChatMessage[]>([]);
-    let draft = $state("");
-    let visitorEmail = $state("");
-    let pocPackage = $state<PocPackage | null>(null);
-    let signalProgress = $state<boolean[]>(emptySignalProgress());
-    let hydrated = $state(false);
-    let isSending = $state(false);
-    let isSubmitting = $state(false);
-    let copiedReport = $state(false);
-    let submitMessage = $state("");
-    let mailtoHref = $state("");
-    let chatViewport: HTMLDivElement | undefined = $state();
-    let canDictate = $state(false);
-    let isDictating = $state(false);
-    let speechRecognition: SpeechRecognitionInstance | null = null;
-    let activeChatRequest: AbortController | null = null;
-
-    const canSend = $derived(draft.trim().length > 0 && !isSending);
-    const canSubmit = $derived(
-        Boolean(pocPackage?.ready) && isEmail(visitorEmail) && !isSubmitting && !isSending,
-    );
-    const reportMarkdown = $derived(buildLocalMarkdown());
-    const packageProgress = $derived(getPackageProgress(signalProgress, selectedLanguage));
-    const completedPackageItems = $derived(packageProgress.filter((item) => item.complete).length);
-    const packageProgressPercent = $derived(
-        packageProgress.length ? Math.round((completedPackageItems / packageProgress.length) * 100) : 0,
-    );
-
-    onMount(() => {
-        loadStoredChat();
-        setupDictation();
-        hydrated = true;
-    });
-
-    $effect(() => {
-        if (!browser || !hydrated) return;
-
-        const payload: StoredChat = {
-            messages,
-            package: pocPackage,
-            signalProgress,
-            visitorEmail,
-            updatedAt: new Date().toISOString(),
-        };
-
-        localStorage.setItem(storageKey, JSON.stringify(payload));
-    });
-
-    $effect(() => {
-        messages.length;
-        if (!browser || !chatViewport) return;
-        tick().then(() => {
-            chatViewport?.scrollTo({ top: chatViewport.scrollHeight, behavior: "smooth" });
-        });
-    });
-
-    function createMessage(
-        role: ChatRole,
-        content: string,
-        options: Partial<Pick<ChatMessage, "learned" | "question" | "suggestedReplies" | "usedTools">> = {},
-    ): ChatMessage {
-        return {
-            id: crypto.randomUUID(),
-            role,
-            content,
-            createdAt: new Date().toISOString(),
-            ...options,
-        };
-    }
-
-    function setupDictation() {
-        if (!browser) return;
-        const windowWithSpeech = window as typeof window & {
-            SpeechRecognition?: SpeechRecognitionConstructor;
-            webkitSpeechRecognition?: SpeechRecognitionConstructor;
-        };
-        const Recognition = windowWithSpeech.SpeechRecognition || windowWithSpeech.webkitSpeechRecognition;
-
-        if (!Recognition) return;
-
-        canDictate = true;
-        speechRecognition = new Recognition();
-        speechRecognition.continuous = false;
-        speechRecognition.interimResults = true;
-        speechRecognition.lang = selectedLanguage === "ar" ? "ar-EG" : "en-US";
-        speechRecognition.onresult = (event) => {
-            let transcript = "";
-            for (let index = event.resultIndex; index < event.results.length; index += 1) {
-                transcript += event.results[index][0]?.transcript || "";
-            }
-            if (!transcript.trim()) return;
-            draft = `${draft ? `${draft.trimEnd()} ` : ""}${transcript.trim()}`;
-        };
-        speechRecognition.onend = () => {
-            isDictating = false;
-        };
-        speechRecognition.onerror = () => {
-            isDictating = false;
-        };
-    }
-
-    function initialMessage(language: LanguageKey): ChatMessage {
-        return createMessage("assistant", pageCopy[language].intro, {
-            learned: pageCopy[language].starterLearned,
-            question: pageCopy[language].starterQuestion,
-            suggestedReplies: [...pageCopy[language].starterReplies],
-        });
-    }
-
-    function loadStoredChat() {
-        if (!browser) return;
+        askingQuestion = true;
+        questionAnswer = "";
+        questionError = "";
 
         try {
-            const raw = localStorage.getItem(storageKey);
-            if (!raw) {
-                messages = [initialMessage(selectedLanguage)];
-                return;
-            }
-
-            const parsed = JSON.parse(raw) as Partial<StoredChat>;
-            messages = Array.isArray(parsed.messages) && parsed.messages.length > 0
-                ? parsed.messages.filter((message) =>
-                    (message.role === "assistant" || message.role === "user") &&
-                    typeof message.content === "string",
-                )
-                : [initialMessage(selectedLanguage)];
-            pocPackage = parsed.package?.markdown ? parsed.package as PocPackage : null;
-            signalProgress = normalizeStoredProgress(parsed.signalProgress);
-            if (pocPackage?.markdown) {
-                signalProgress = mergeSignalProgress(signalProgress, pocPackage.markdown, pocPackage.ready);
-            }
-            visitorEmail = typeof parsed.visitorEmail === "string" ? parsed.visitorEmail : "";
-        } catch {
-            messages = [initialMessage(selectedLanguage)];
-        }
-    }
-
-    async function sendMessage(override?: string) {
-        const content = (override ?? draft).trim();
-        if (!content || isSending) return;
-
-        const nextMessages = [...messages, createMessage("user", content)];
-        messages = nextMessages;
-        draft = "";
-        isSending = true;
-        submitMessage = "";
-        mailtoHref = "";
-        const controller = new AbortController();
-        activeChatRequest = controller;
-
-        try {
-            const response = await fetch("/api/services-chat", {
+            const response = await fetch("/api/services-question", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                signal: controller.signal,
+                headers: { "content-type": "application/json" },
                 body: JSON.stringify({
-                    language: selectedLanguage,
-                    messages: nextMessages,
+                    question: question.trim(),
+                    language,
                 }),
             });
+            const payload = await response.json();
 
-            const result = await response.json();
-
-            if (result?.code === "missing_deepseek_key") {
-                messages = [...nextMessages, createMessage("assistant", selectedCopy.configMissing)];
-                return;
+            if (!response.ok || typeof payload?.answer !== "string") {
+                throw new Error(
+                    typeof payload?.message === "string"
+                        ? payload.message
+                        : "Questions are offline.",
+                );
             }
 
-            if (!response.ok) {
-                const message = result?.message || selectedCopy.genericError;
-                messages = [...nextMessages, createMessage("assistant", message)];
-                return;
-            }
-
-            const assistantMessage = typeof result.assistantMessage === "string"
-                ? result.assistantMessage
-                : selectedCopy.genericError;
-            const suggestedReplies = Array.isArray(result.suggestedReplies)
-                ? result.suggestedReplies.filter((item: unknown) => typeof item === "string").slice(0, 3)
-                : [];
-            const usedTools = Array.isArray(result.usedTools)
-                ? result.usedTools.filter((item: unknown) => typeof item === "string").slice(0, 3)
-                : [];
-
-            messages = [
-                ...nextMessages,
-                createMessage("assistant", assistantMessage, {
-                    learned: typeof result.learned === "string" ? result.learned : null,
-                    question: typeof result.question === "string" ? result.question : null,
-                    suggestedReplies,
-                    usedTools,
-                }),
-            ];
-
-            const packageMarkdown = typeof result.packageMarkdown === "string" && result.packageMarkdown
-                ? result.packageMarkdown
-                : typeof result.draftPackageMarkdown === "string"
-                ? result.draftPackageMarkdown
-                : "";
-
-            if (packageMarkdown) {
-                pocPackage = {
-                    title: result.packageTitle || "Agentic pipeline POC package",
-                    markdown: packageMarkdown,
-                    html: typeof result.packageHtml === "string" ? result.packageHtml : undefined,
-                    ready: result.ready === true && Boolean(result.packageMarkdown),
-                    updatedAt: new Date().toISOString(),
-                };
-                signalProgress = mergeSignalProgress(signalProgress, packageMarkdown, pocPackage.ready);
-            }
+            questionAnswer = payload.answer;
         } catch (error) {
-            messages = [
-                ...nextMessages,
-                createMessage(
-                    "assistant",
-                    isAbortError(error) ? selectedCopy.stopped : selectedCopy.genericError,
-                ),
-            ];
+            questionError =
+                error instanceof Error
+                    ? error.message
+                    : "Questions are offline.";
         } finally {
-            if (activeChatRequest === controller) {
-                activeChatRequest = null;
-                isSending = false;
-            }
+            askingQuestion = false;
         }
-    }
-
-    function handleKeydown(event: KeyboardEvent) {
-        if (event.key === "Enter" && !event.shiftKey) {
-            event.preventDefault();
-            sendMessage();
-        }
-    }
-
-    function sendSuggestedReply(reply: string) {
-        if (isSending) return;
-        sendMessage(reply);
-    }
-
-    function stopResponse() {
-        activeChatRequest?.abort();
-    }
-
-    function toggleDictation() {
-        if (!speechRecognition || !canDictate) return;
-
-        speechRecognition.lang = selectedLanguage === "ar" ? "ar-EG" : "en-US";
-        if (isDictating) {
-            speechRecognition.stop();
-            isDictating = false;
-            return;
-        }
-
-        try {
-            speechRecognition.start();
-            isDictating = true;
-        } catch {
-            isDictating = false;
-        }
-    }
-
-    function renderAssistantMarkdown(content: string) {
-        return markdown.render(content);
-    }
-
-    async function submitPackage() {
-        if (!canSubmit || !pocPackage) return;
-
-        isSubmitting = true;
-        submitMessage = "";
-        mailtoHref = "";
-
-        let stored: StoredChat | undefined;
-        if (browser) {
-            try {
-                stored = JSON.parse(localStorage.getItem(storageKey) || "{}") as StoredChat;
-            } catch {
-                stored = undefined;
-            }
-        }
-
-        const storedMessages = stored?.messages?.length ? stored.messages : [];
-        const transcript = storedMessages.length ? storedMessages : messages;
-
-        try {
-            const response = await fetch("/api/services-package", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    language: selectedLanguage,
-                    visitorEmail,
-                    transcript,
-                    packageMarkdown: pocPackage.markdown,
-                    packageHtml: pocPackage.html,
-                    source: "services-chat",
-                }),
-            });
-
-            const result = await response.json();
-            mailtoHref = !result.sent && typeof result.mailtoHref === "string" ? result.mailtoHref : "";
-            submitMessage = result.sent
-                ? selectedCopy.submitConfigured
-                : selectedCopy.submitFallback;
-
-            if (!response.ok && result.message) {
-                submitMessage = result.message;
-            }
-        } catch {
-            submitMessage = selectedCopy.genericError;
-        } finally {
-            isSubmitting = false;
-        }
-    }
-
-    async function copyReport() {
-        try {
-            await navigator.clipboard.writeText(reportMarkdown);
-            copiedReport = true;
-            setTimeout(() => {
-                copiedReport = false;
-            }, 2200);
-        } catch {
-            window.prompt("Copy report", reportMarkdown);
-        }
-    }
-
-    function resetChat() {
-        activeChatRequest?.abort();
-        activeChatRequest = null;
-        messages = [initialMessage(selectedLanguage)];
-        draft = "";
-        pocPackage = null;
-        signalProgress = emptySignalProgress();
-        visitorEmail = "";
-        submitMessage = "";
-        mailtoHref = "";
-        isSending = false;
-        if (browser) {
-            localStorage.removeItem(storageKey);
-        }
-    }
-
-    function buildLocalMarkdown() {
-        const lines = [
-            "# Agentic POC Package",
-            "",
-            `Contact: ${visitorEmail || "not provided yet"}`,
-            `Generated: ${new Date().toISOString()}`,
-            "",
-            "## Package",
-            "",
-            pocPackage?.markdown || "Package is not ready yet.",
-            "",
-            "## Full Transcript",
-            "",
-            ...messages.map((message) => [
-                `### ${message.role === "user" ? "Visitor" : "Essam intake agent"}`,
-                "",
-                message.content,
-                "",
-            ].join("\n")),
-        ];
-
-        return lines.join("\n");
-    }
-
-    function isEmail(value: string) {
-        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
-    }
-
-    function isAbortError(error: unknown) {
-        return error instanceof DOMException && error.name === "AbortError";
-    }
-
-    function normalizeStoredProgress(value: unknown) {
-        if (!Array.isArray(value)) return emptySignalProgress();
-        return packageSectionNeedles.map((_, index) => value[index] === true);
-    }
-
-    function mergeSignalProgress(current: boolean[], markdownValue: string, ready = false) {
-        if (ready) return packageSectionNeedles.map(() => true);
-        const next = normalizeStoredProgress(current);
-        packageSectionNeedles.forEach((needles, index) => {
-            next[index] = next[index] || sectionIsComplete(markdownValue, needles);
-        });
-        return next;
-    }
-
-    function getPackageProgress(progressState: boolean[], language: LanguageKey) {
-        const normalizedProgress = normalizeStoredProgress(progressState);
-        return packageSectionNeedles.map((_, index) => ({
-            label: pageCopy[language].packageSections[index],
-            complete: normalizedProgress[index],
-        }));
-    }
-
-    function sectionIsComplete(markdownValue: string, needles: readonly string[]) {
-        const normalized = markdownValue.toLowerCase();
-        const sectionIndex = needles
-            .map((needle) => normalized.indexOf(needle))
-            .find((index) => index >= 0);
-
-        if (sectionIndex === undefined || sectionIndex < 0) return false;
-
-        const section = markdownValue.slice(sectionIndex);
-        const nextSection = section.search(/\n##\s+\d+\./);
-        const body = (nextSection > 0 ? section.slice(0, nextSection) : section)
-            .replace(/^.*$/m, "")
-            .trim();
-
-        return body.length > 35 && !/\btbd\b/i.test(body.slice(0, 260));
     }
 </script>
 
 <svelte:head>
-    <title>{selectedCopy.metaTitle}</title>
-    <meta name="description" content={selectedCopy.metaDescription} />
+    <title>{copy.title}</title>
+    <meta name="description" content={copy.description} />
     <link rel="canonical" href="https://egouda.xyz/services" />
-    <link rel="alternate" type="text/plain" href="https://egouda.xyz/llm.txt" />
-
-    <meta property="og:title" content={selectedCopy.metaTitle} />
-    <meta property="og:description" content={selectedCopy.metaDescription} />
+    <meta property="og:title" content={copy.title} />
+    <meta property="og:description" content={copy.description} />
     <meta property="og:url" content="https://egouda.xyz/services" />
-    <meta property="og:image" content="https://egouda.xyz/og-image.png" />
-
-    <meta name="twitter:title" content={selectedCopy.metaTitle} />
-    <meta name="twitter:description" content={selectedCopy.metaDescription} />
-    <meta name="twitter:image" content="https://egouda.xyz/og-image.png" />
 </svelte:head>
 
-<section
-    class="mx-auto flex w-full max-w-[92rem] flex-col gap-7 py-6 md:py-10"
-    lang={selectedCopy.lang}
-    dir={selectedCopy.dir}
->
-    <div class="grid gap-6 border-b pb-7">
-        <div class="flex flex-wrap items-center gap-2">
-            <Badge variant="secondary">{selectedCopy.badges[0]}</Badge>
-            <Badge variant="outline">{selectedCopy.badges[1]}</Badge>
-            <span class="inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs text-muted-foreground">
-                <Sparkles class="size-3.5" />
-                {selectedCopy.status}
-            </span>
-        </div>
-
-        <div class="grid gap-3">
-            <h1 class="max-w-4xl text-4xl font-bold leading-tight tracking-normal md:text-6xl">
-                {selectedCopy.h1}
-            </h1>
-            <p class="max-w-2xl text-base leading-7 text-muted-foreground md:text-lg">
-                {selectedCopy.sub}
+<div class="services-page" lang={copy.lang} dir={copy.dir}>
+    <section class="hero" aria-labelledby="services-title">
+        <div class="hero-copy">
+            <p class="brand-mark" dir="ltr">
+                <strong>{copy.mark}</strong>
+                <span>{copy.markLong}</span>
             </p>
-        </div>
-    </div>
-
-    <div class="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] xl:grid-cols-[minmax(0,1fr)_21rem]">
-        <section aria-labelledby="chat-heading" class="min-w-0">
-            <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                    <h2 id="chat-heading" class="text-xl font-semibold">
-                        {selectedCopy.chatHeading}
-                    </h2>
-                    <p class="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
-                        {selectedCopy.chatSub}
-                    </p>
-                </div>
-                <Button variant="outline" size="sm" onclick={resetChat}>
-                    <RotateCcw class="size-4" />
-                    {selectedCopy.reset}
-                </Button>
-            </div>
-
-            <div class="overflow-hidden rounded-lg border bg-background">
-                <div
-                    bind:this={chatViewport}
-                    class="flex max-h-[68vh] min-h-[32rem] flex-col gap-4 overflow-y-auto p-4 md:p-5"
-                    role="log"
-                    aria-live="polite"
-                    aria-relevant="additions text"
-                    aria-atomic="false"
-                    aria-labelledby="chat-heading"
-                    aria-busy={isSending}
-                >
-                    {#each messages as message (message.id)}
-                        <article
-                            class={`flex gap-3 ${
-                                message.role === "user"
-                                    ? selectedLanguage === "ar" ? "justify-start" : "justify-end"
-                                    : selectedLanguage === "ar" ? "justify-end" : "justify-start"
-                            }`}
-                            aria-label={message.role === "user" ? selectedCopy.visitorLabel : selectedCopy.assistantLabel}
-                        >
-                            {#if message.role === "assistant"}
-                                <div class="mt-1 grid size-8 shrink-0 place-items-center rounded-md border bg-primary/5 text-primary">
-                                    <Bot class="size-4" />
-                                </div>
-                            {/if}
-
-                            {#if message.role === "assistant"}
-                                {#if message.learned || message.question || message.suggestedReplies?.length}
-                                    <div
-                                        class="w-full max-w-[95%] rounded-lg border bg-card p-3 text-sm text-card-foreground shadow-sm md:max-w-[52rem] md:p-4"
-                                        dir={selectedCopy.dir}
-                                    >
-                                        {#if message.usedTools?.length}
-                                            <span class="mb-3 inline-flex rounded-full border bg-background px-2 py-1 text-[0.68rem] font-medium text-muted-foreground">
-                                                {selectedCopy.usedTools}
-                                            </span>
-                                        {/if}
-
-                                        {#if message.learned}
-                                            <div class="rounded-md bg-muted/45 p-3">
-                                                <p class="text-[0.7rem] font-semibold uppercase tracking-wide text-muted-foreground">
-                                                    {selectedCopy.signal}
-                                                </p>
-                                                <p class="mt-1 leading-6">{message.learned}</p>
-                                            </div>
-                                        {/if}
-
-                                        {#if message.question}
-                                            <div class="mt-3 rounded-md border bg-background/75 p-3">
-                                                <p class="text-[0.7rem] font-semibold uppercase tracking-wide text-muted-foreground">
-                                                    {selectedCopy.nextQuestion}
-                                                </p>
-                                                <p class="mt-1 text-base font-semibold leading-7">
-                                                    {message.question}
-                                                </p>
-                                            </div>
-                                        {:else}
-                                            <div class="assistant-markdown leading-6">
-                                                {@html renderAssistantMarkdown(message.content)}
-                                            </div>
-                                        {/if}
-
-                                        {#if message.suggestedReplies?.length}
-                                            <div class="mt-3 flex flex-wrap gap-2" aria-label={selectedCopy.tapToAnswer}>
-                                                {#each message.suggestedReplies as reply}
-                                                    <button
-                                                        type="button"
-                                                        class="rounded-full border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:border-primary/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-60"
-                                                        disabled={isSending}
-                                                        onclick={() => sendSuggestedReply(reply)}
-                                                    >
-                                                        {reply}
-                                                    </button>
-                                                {/each}
-                                            </div>
-                                        {/if}
-                                    </div>
-                                {:else}
-                                    <div
-                                        class="assistant-markdown w-full max-w-[95%] rounded-lg border bg-card px-4 py-3 text-sm leading-6 text-card-foreground shadow-sm md:max-w-[52rem]"
-                                        dir={selectedCopy.dir}
-                                    >
-                                        {@html renderAssistantMarkdown(message.content)}
-                                    </div>
-                                {/if}
-                            {:else}
-                                <div
-                                    class="max-w-[92%] whitespace-pre-wrap rounded-lg bg-primary px-4 py-3 text-sm leading-6 text-primary-foreground md:max-w-2xl"
-                                    dir={selectedCopy.dir}
-                                >
-                                    {message.content}
-                                </div>
-                            {/if}
-                        </article>
-                    {/each}
-
-                    {#if isSending}
-                        <div class={`flex gap-3 ${selectedLanguage === "ar" ? "justify-end" : "justify-start"}`}>
-                            <div class="mt-1 grid size-8 shrink-0 place-items-center rounded-md border bg-primary/5 text-primary">
-                                <Bot class="size-4" />
-                            </div>
-                            <div
-                                class="w-full max-w-[95%] rounded-lg border bg-card px-4 py-3 text-sm text-card-foreground shadow-sm md:max-w-[52rem]"
-                                role="status"
-                            >
-                                <div class="flex items-center gap-2 font-medium">
-                                    <span>{selectedCopy.working}</span>
-                                    <span class="typing-dots" aria-hidden="true">
-                                        <span></span>
-                                        <span></span>
-                                        <span></span>
-                                    </span>
-                                </div>
-                                <div class="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
-                                    {#each selectedCopy.workingSteps as step}
-                                        <span class="rounded-full border bg-background px-2 py-1">{step}</span>
-                                    {/each}
-                                </div>
-                            </div>
-                        </div>
+            <h1 id="services-title">{copy.h1}</h1>
+            <p class="hero-intro">{copy.intro}</p>
+            <div class="hero-actions">
+                <a href="#proof" class="action action-dark">
+                    {copy.primaryCta}
+                    <ArrowDown size={17} />
+                </a>
+                <a href="#book" class="action action-light">
+                    {copy.secondaryCta}
+                    {#if copy.dir === "rtl"}
+                        <ArrowLeft size={17} />
+                    {:else}
+                        <ArrowRight size={17} />
                     {/if}
-                </div>
-
-                <form
-                    class="border-t p-3 md:p-4"
-                    onsubmit={(event) => {
-                        event.preventDefault();
-                        sendMessage();
-                    }}
-                >
-                    <label class="sr-only" for="services-chat-input">
-                        {selectedCopy.inputLabel}
-                    </label>
-                    <div class="flex flex-col gap-3 sm:flex-row">
-                        <textarea
-                            id="services-chat-input"
-                            bind:value={draft}
-                            rows="3"
-                            class="min-h-24 flex-1 resize-none rounded-md border bg-background px-3 py-2 text-sm outline-none transition focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
-                            placeholder={selectedCopy.inputPlaceholder}
-                            onkeydown={handleKeydown}
-                            dir={selectedCopy.dir}
-                        ></textarea>
-                        <div class="flex shrink-0 gap-2 sm:self-end">
-                            {#if canDictate}
-                                <Button
-                                    type="button"
-                                    variant={isDictating ? "secondary" : "outline"}
-                                    aria-label={isDictating ? selectedCopy.stopDictation : selectedCopy.dictate}
-                                    title={isDictating ? selectedCopy.stopDictation : selectedCopy.dictate}
-                                    onclick={toggleDictation}
-                                >
-                                    {#if isDictating}
-                                        <MicOff class="size-4" />
-                                        <span class="sr-only">{selectedCopy.stopDictation}</span>
-                                    {:else}
-                                        <Mic class="size-4" />
-                                        <span class="sr-only">{selectedCopy.dictate}</span>
-                                    {/if}
-                                </Button>
-                            {/if}
-                            {#if isSending}
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onclick={stopResponse}
-                                    aria-label={selectedCopy.stop}
-                                >
-                                    <CircleStop class="size-4" />
-                                    {selectedCopy.stop}
-                                </Button>
-                            {/if}
-                            <Button type="submit" disabled={!canSend}>
-                                {#if isSending}
-                                    {selectedCopy.thinking}
-                                {:else}
-                                    <Send class="size-4" />
-                                    {selectedCopy.send}
-                                {/if}
-                            </Button>
-                        </div>
-                    </div>
-                    <p class="mt-2 text-xs text-muted-foreground">
-                        {#if isDictating}
-                            {selectedCopy.dictating}...
-                        {:else}
-                            {selectedCopy.transcriptSaved}
-                        {/if}
-                    </p>
-                </form>
+                </a>
             </div>
-        </section>
+        </div>
 
-        <aside class="min-w-0 space-y-5">
-            <section class="rounded-lg border bg-card p-4 text-card-foreground">
-                <div class="flex items-start justify-between gap-3">
+        <div class="price-tool" aria-label="Service price and scope">
+            <div class="price-line" dir="ltr">
+                <strong>{data.offer.displayPrice}</strong>
+                <span>{data.offer.currency.toUpperCase()}</span>
+            </div>
+            <p>{copy.priceSuffix}</p>
+            <div class="mini-flow" dir="ltr" aria-hidden="true">
+                <span>CALL</span><i></i><span>BUILD</span><i></i><span>CALL</span>
+            </div>
+            <div class="availability" dir="ltr">
+                <CalendarDays size={18} />
+                <span>Sundays · egouda@bokralabs.com</span>
+            </div>
+        </div>
+    </section>
+
+    <section class="proof" id="proof" aria-labelledby="proof-title">
+        <header class="section-head">
+            <h2 id="proof-title">{copy.proofHeading}</h2>
+            <p>{copy.proofSub}</p>
+        </header>
+
+        <div class="demo-list">
+            <article class="demo-row">
+                <h3>{copy.demoLabels[0]}</h3>
+                <FinanceWorkflowDemo {language} />
+            </article>
+            <article class="demo-row demo-row-reverse">
+                <h3>{copy.demoLabels[1]}</h3>
+                <HomeServerWorkflowDemo {language} />
+            </article>
+            <article class="demo-row">
+                <h3>{copy.demoLabels[2]}</h3>
+                <PaperworkWorkflowDemo {language} />
+            </article>
+        </div>
+    </section>
+
+    <section class="process" aria-labelledby="process-title">
+        <h2 id="process-title">{copy.processHeading}</h2>
+        <ol>
+            {#each copy.process as step, index}
+                <li>
+                    <span>{index + 1}</span>
                     <div>
-                        <h2 class="text-base font-semibold">
-                            {selectedCopy.packageHeading}
-                        </h2>
-                        <p class="mt-1 text-sm leading-6 text-muted-foreground">
-                            {pocPackage?.ready
-                                ? selectedCopy.readyPrefix
-                                : pocPackage?.markdown
-                                ? selectedCopy.draftPrefix
-                                : selectedCopy.packageEmpty}
-                        </p>
+                        <h3>{step.title}</h3>
+                        <p>{step.text}</p>
                     </div>
-                    <MessageSquareText class="mt-1 size-5 text-muted-foreground" />
-                </div>
+                </li>
+            {/each}
+        </ol>
+    </section>
 
-                <div class="mt-4 rounded-md border bg-background p-3">
-                    <div class="flex items-center justify-between gap-3">
-                        <p class="text-sm font-medium">{selectedCopy.packageProgress}</p>
-                        <span class="text-xs text-muted-foreground">
-                            {completedPackageItems}/{packageProgress.length}
-                        </span>
-                    </div>
-                    <p class="mt-1 text-xs leading-5 text-muted-foreground">
-                        {selectedCopy.packageExpectation}
-                    </p>
-                    <div class="mt-3 h-2 overflow-hidden rounded-full bg-muted">
-                        <div
-                            class="h-full rounded-full bg-primary transition-all duration-500"
-                            style={`width: ${packageProgressPercent}%`}
-                        ></div>
-                    </div>
-                    <div class="mt-3 grid grid-cols-2 gap-2">
-                        {#each packageProgress as item}
-                            <div
-                                class={`flex items-center gap-2 rounded-md border px-2.5 py-2 text-xs ${
-                                    item.complete
-                                        ? "border-primary/35 bg-primary/10 text-foreground"
-                                        : "bg-muted/20 text-muted-foreground"
-                                }`}
-                            >
-                                <Check class={`size-3.5 ${item.complete ? "opacity-100" : "opacity-25"}`} />
-                                <span class="min-w-0 truncate">{item.label}</span>
-                            </div>
-                        {/each}
-                    </div>
-                </div>
+    <section class="booking" id="book" aria-labelledby="booking-title">
+        <div class="booking-copy">
+            <h2 id="booking-title">{copy.packageHeading}</h2>
+            <ul>
+                {#each copy.packageItems as item}
+                    <li><Check size={17} /> <span>{item}</span></li>
+                {/each}
+            </ul>
+        </div>
 
-                <details class="mt-3 rounded-md border bg-background">
-                    <summary class="cursor-pointer px-3 py-2 text-sm font-medium">
-                        {selectedCopy.viewDraft}
-                    </summary>
-                    <div class="max-h-72 overflow-auto border-t p-3">
-                        {#if pocPackage?.markdown}
-                            <pre class="whitespace-pre-wrap break-words text-xs leading-5 text-muted-foreground">{pocPackage.markdown}</pre>
-                        {:else}
-                            <p class="text-sm leading-6 text-muted-foreground">
-                                {selectedCopy.packageEmpty}
-                            </p>
-                        {/if}
-                    </div>
-                </details>
+        <div class="checkout-tool">
+            <div class="checkout-price" dir="ltr">
+                <strong>{data.offer.displayPrice}</strong>
+                <span>{data.offer.currency.toUpperCase()}</span>
+            </div>
 
-                <div class="mt-3 flex flex-col gap-2">
-                    <Button variant="outline" onclick={copyReport}>
-                        {#if copiedReport}
-                            <Check class="size-4" />
-                            {selectedCopy.copied}
-                        {:else}
-                            <Copy class="size-4" />
-                            {selectedCopy.copyReport}
-                        {/if}
-                    </Button>
-                    <Button href="/portfolio" variant="outline">
-                        {selectedCopy.portfolio}
-                        {#if selectedLanguage === "ar"}
-                            <ArrowLeft class="size-4" />
-                        {:else}
-                            <ArrowRight class="size-4" />
-                        {/if}
-                    </Button>
-                </div>
-            </section>
-
-            <section class="rounded-lg border bg-card p-4 text-card-foreground">
-                <h2 class="text-base font-semibold">
-                    {selectedCopy.emailHeading}
-                </h2>
-                <p class="mt-1 text-sm leading-6 text-muted-foreground">
-                    {selectedCopy.emailSub}
-                </p>
-
-                <form
-                    class="mt-4 space-y-3"
-                    onsubmit={(event) => {
-                        event.preventDefault();
-                        submitPackage();
-                    }}
+            {#if data.bookingConfigured && data.paidBookingUrl}
+                <a
+                    class="checkout-button"
+                    href={data.paidBookingUrl}
+                    target="_blank"
+                    rel="noreferrer"
                 >
-                    <label class="block text-sm font-medium" for="visitor-email">
-                        {selectedCopy.emailLabel}
-                    </label>
-                    <input
-                        id="visitor-email"
-                        type="email"
-                        bind:value={visitorEmail}
-                        placeholder={selectedCopy.emailPlaceholder}
-                        class="h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
-                        dir="ltr"
-                    />
-                    <Button type="submit" disabled={!canSubmit} class="w-full">
-                        {#if isSubmitting}
-                            {selectedCopy.submitting}
-                        {:else}
-                            <Mail class="size-4" />
-                            {selectedCopy.submit}
-                        {/if}
-                    </Button>
-                </form>
+                    <ShieldCheck size={18} />
+                    {copy.checkout}
+                </a>
+                <p class="payment-note">{copy.paymentSafe}</p>
+            {:else}
+                <button type="button" class="checkout-button" disabled>
+                    <CalendarDays size={18} />
+                    {copy.checkoutUnavailable}
+                </button>
+                <p class="payment-note">{copy.checkoutUnavailableSub}</p>
+            {/if}
+        </div>
+    </section>
 
-                {#if submitMessage}
-                    <p class="mt-3 text-sm leading-6 text-muted-foreground">
-                        {submitMessage}
-                    </p>
-                {/if}
+    <section class="questions" aria-labelledby="questions-title">
+        <div>
+            <h2 id="questions-title">{copy.questionsHeading}</h2>
+            <a href="mailto:egouda@bokralabs.com">
+                <Mail size={16} /> egouda@bokralabs.com
+            </a>
+        </div>
 
-                {#if mailtoHref}
-                    <Button href={mailtoHref} variant="outline" class="mt-3 w-full">
-                        <Mail class="size-4" />
-                        {selectedCopy.mailDraft}
-                    </Button>
+        <form onsubmit={askQuestion}>
+            <label for="service-question" class="sr-only">{copy.questionsHeading}</label>
+            <textarea
+                id="service-question"
+                bind:value={question}
+                maxlength="600"
+                rows="3"
+                placeholder={copy.questionPlaceholder}
+            ></textarea>
+            <button type="submit" disabled={askingQuestion || question.trim().length < 2}>
+                {#if askingQuestion}
+                    <span class="spin"><LoaderCircle size={17} /></span> {copy.asking}
+                {:else}
+                    <Send size={17} /> {copy.ask}
                 {/if}
-            </section>
-        </aside>
-    </div>
-</section>
+            </button>
+        </form>
+        <p class="question-note">{copy.questionPrivacy}</p>
+
+        {#if questionAnswer}
+            <p class="answer" aria-live="polite">{questionAnswer}</p>
+        {:else if questionError}
+            <p class="answer error" role="alert">
+                {questionError}
+                <a href="mailto:egouda@bokralabs.com">{copy.emailInstead}</a>
+            </p>
+        {/if}
+    </section>
+
+    <footer class="services-footer">
+        <ShieldCheck size={15} />
+        <span>{copy.synthetic}</span>
+    </footer>
+</div>
 
 <style>
-    .assistant-markdown {
-        overflow-wrap: anywhere;
+    :global(main.container) {
+        max-width: 1380px;
     }
 
-    .assistant-markdown :global(:first-child) {
-        margin-top: 0;
+    .services-page {
+        --service-orange: #ff6b35;
+        --service-orange-light: #ff8257;
+        --service-ink: #111217;
+        --service-offwhite: #f8f8f4;
+        --service-rule: color-mix(in oklab, currentColor 20%, transparent);
+        display: flex;
+        flex-direction: column;
+        gap: clamp(4.5rem, 9vw, 8rem);
+        padding-bottom: 2rem;
     }
 
-    .assistant-markdown :global(:last-child) {
-        margin-bottom: 0;
+    .hero {
+        display: grid;
+        box-sizing: border-box;
+        min-height: min(570px, calc(100svh - 12rem));
+        grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
+        align-items: end;
+        gap: clamp(2rem, 7vw, 7rem);
+        overflow: hidden;
+        border-radius: 8px;
+        background: var(--service-orange);
+        padding: clamp(1.5rem, 4vw, 3.5rem);
+        color: var(--service-ink);
     }
 
-    .assistant-markdown :global(p) {
-        margin: 0 0 0.8rem;
+    .hero-copy {
+        max-width: 850px;
     }
 
-    .assistant-markdown :global(ul),
-    .assistant-markdown :global(ol) {
-        margin: 0.65rem 0 0.9rem;
-        padding-inline-start: 1.25rem;
+    .brand-mark {
+        display: flex;
+        align-items: baseline;
+        gap: 0.75rem;
+        margin: 0 0 clamp(1rem, 2.5vw, 2rem);
     }
 
-    .assistant-markdown :global(li) {
-        margin: 0.3rem 0;
+    .brand-mark strong {
+        font-size: clamp(1.35rem, 3vw, 2.2rem);
     }
 
-    .assistant-markdown :global(strong) {
-        color: hsl(var(--foreground));
+    .brand-mark span {
+        font-size: 0.68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .services-page[dir="rtl"] .brand-mark {
+        justify-content: flex-end;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+        text-wrap: pretty;
+    }
+
+    h1 {
+        max-width: 15ch;
+        margin: 0;
+        font-size: clamp(2.8rem, 6vw, 5rem);
+        line-height: 0.98;
+        letter-spacing: 0;
+        text-wrap: balance;
+    }
+
+    .hero-intro {
+        max-width: 53ch;
+        margin: clamp(1.4rem, 3vw, 2.2rem) 0 0;
+        font-size: clamp(1.05rem, 2vw, 1.35rem);
+        line-height: 1.5;
+    }
+
+    .hero-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-top: 2rem;
+    }
+
+    .action {
+        display: inline-flex;
+        min-height: 48px;
+        align-items: center;
+        justify-content: center;
+        gap: 0.55rem;
+        border-radius: 6px;
+        padding: 0.78rem 1rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: transform 160ms ease-out, background 160ms ease-out;
+    }
+
+    .action:hover {
+        transform: translateY(-2px);
+    }
+
+    .action:focus-visible {
+        outline: 3px solid var(--service-ink);
+        outline-offset: 3px;
+    }
+
+    .action-dark {
+        background: var(--service-ink);
+        color: var(--service-offwhite);
+    }
+
+    .action-light {
+        border: 1px solid var(--service-ink);
+        color: var(--service-ink);
+    }
+
+    .action-light:hover {
+        background: color-mix(in srgb, var(--service-offwhite) 28%, transparent);
+    }
+
+    .price-tool {
+        align-self: end;
+        border: 2px solid var(--service-ink);
+        border-radius: 8px;
+        background: color-mix(in srgb, var(--service-offwhite) 24%, transparent);
+        padding: clamp(1.2rem, 3vw, 1.8rem);
+    }
+
+    .price-line {
+        display: flex;
+        align-items: baseline;
+        gap: 0.55rem;
+    }
+
+    .services-page[dir="rtl"] .price-line,
+    .services-page[dir="rtl"] .checkout-price {
+        justify-content: flex-end;
+    }
+
+    .price-line strong {
+        font-size: clamp(2.6rem, 6vw, 4.7rem);
+        line-height: 1;
+        letter-spacing: 0;
+    }
+
+    .price-line span,
+    .price-tool > p {
+        font-size: 0.75rem;
         font-weight: 700;
     }
 
-    .assistant-markdown :global(a) {
-        color: hsl(var(--primary));
-        text-decoration: underline;
-        text-underline-offset: 0.2em;
+    .price-tool > p {
+        margin: 0.5rem 0 1.8rem;
     }
 
-    .assistant-markdown :global(code) {
-        border: 1px solid hsl(var(--border));
-        border-radius: 0.25rem;
-        background: hsl(var(--muted) / 0.35);
-        padding: 0.08rem 0.3rem;
-        font-size: 0.92em;
+    .mini-flow {
+        display: grid;
+        grid-template-columns: auto 1fr auto 1fr auto;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.62rem;
+        font-weight: 700;
     }
 
-    .typing-dots {
+    .mini-flow i {
+        height: 2px;
+        background: var(--service-ink);
+    }
+
+    .availability {
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        margin-top: 1.5rem;
+        padding-top: 1rem;
+        border-top: 1px solid color-mix(in srgb, var(--service-ink) 35%, transparent);
+        font-size: 0.72rem;
+        font-weight: 700;
+    }
+
+    .proof,
+    .process,
+    .questions {
+        width: min(1120px, 100%);
+        margin-inline: auto;
+    }
+
+    .section-head {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 2rem;
+        margin-bottom: clamp(2rem, 5vw, 4rem);
+    }
+
+    .section-head h2,
+    .process h2,
+    .booking h2,
+    .questions h2 {
+        margin: 0;
+        font-size: clamp(2.2rem, 5vw, 4rem);
+        line-height: 1;
+        letter-spacing: 0;
+        text-wrap: balance;
+    }
+
+    .section-head p {
+        max-width: 40ch;
+        margin: 0;
+        color: var(--muted-foreground);
+        line-height: 1.5;
+    }
+
+    .demo-list {
+        display: flex;
+        flex-direction: column;
+        gap: clamp(4rem, 9vw, 8rem);
+    }
+
+    .demo-row {
+        display: grid;
+        grid-template-columns: minmax(110px, 0.28fr) minmax(0, 1.72fr);
+        align-items: start;
+        gap: clamp(1.2rem, 4vw, 4rem);
+    }
+
+    .demo-row-reverse {
+        grid-template-columns: minmax(0, 1.72fr) minmax(110px, 0.28fr);
+    }
+
+    .demo-row-reverse h3 {
+        grid-column: 2;
+        grid-row: 1;
+    }
+
+    .demo-row-reverse :global(> :not(h3)) {
+        grid-column: 1;
+        grid-row: 1;
+    }
+
+    .demo-row h3 {
+        margin: 0;
+        padding-top: 0.75rem;
+        font-size: clamp(1rem, 2vw, 1.35rem);
+        line-height: 1.1;
+    }
+
+    .process h2 {
+        max-width: 11ch;
+    }
+
+    .process ol {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0;
+        margin: clamp(2.4rem, 6vw, 5rem) 0 0;
+        padding: 0;
+        list-style: none;
+        border-top: 1px solid var(--border);
+        border-bottom: 1px solid var(--border);
+    }
+
+    .process li {
+        display: grid;
+        min-height: 210px;
+        grid-template-columns: auto 1fr;
+        align-content: space-between;
+        gap: 1rem;
+        padding: 1.2rem;
+        border-inline-end: 1px solid var(--border);
+    }
+
+    .process li:last-child {
+        border-inline-end: 0;
+    }
+
+    .process li > span {
+        display: grid;
+        width: 30px;
+        height: 30px;
+        place-items: center;
+        border-radius: 50%;
+        background: var(--service-orange);
+        color: var(--service-ink);
+        font-size: 0.78rem;
+        font-weight: 700;
+    }
+
+    .process li > div {
+        grid-column: 1 / -1;
+        align-self: end;
+    }
+
+    .process h3 {
+        margin: 0;
+        font-size: 1.1rem;
+    }
+
+    .process li p {
+        max-width: 30ch;
+        margin: 0.55rem 0 0;
+        color: var(--muted-foreground);
+        line-height: 1.5;
+    }
+
+    .booking {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(310px, 0.72fr);
+        gap: clamp(2.5rem, 8vw, 8rem);
+        border-radius: 8px;
+        background: var(--service-ink);
+        padding: clamp(1.5rem, 5vw, 4.8rem);
+        color: var(--service-offwhite);
+    }
+
+    .booking-copy ul {
+        display: flex;
+        flex-direction: column;
+        gap: 0.85rem;
+        margin: 2rem 0 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .booking-copy li {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        color: #d7d8de;
+    }
+
+    .checkout-tool {
+        align-self: center;
+        border: 1px solid #484b57;
+        border-radius: 8px;
+        padding: clamp(1.2rem, 4vw, 2rem);
+        background: #1b1d24;
+    }
+
+    .checkout-price {
+        display: flex;
+        align-items: baseline;
+        gap: 0.55rem;
+        margin-bottom: 1.2rem;
+    }
+
+    .checkout-price strong {
+        font-size: clamp(2.5rem, 6vw, 4rem);
+        line-height: 1;
+        letter-spacing: 0;
+    }
+
+    .checkout-price span {
+        color: #b7bac4;
+        font-size: 0.72rem;
+        font-weight: 700;
+    }
+
+    .checkout-button {
+        display: inline-flex;
+        width: 100%;
+        min-height: 52px;
+        align-items: center;
+        justify-content: center;
+        gap: 0.55rem;
+        border: 0;
+        border-radius: 6px;
+        background: var(--service-orange);
+        padding: 0.8rem 1rem;
+        color: var(--service-ink);
+        font: inherit;
+        font-weight: 700;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    .checkout-button:hover:not(:disabled),
+    .checkout-button:focus-visible:not(:disabled) {
+        background: var(--service-orange-light);
+    }
+
+    .checkout-button:focus-visible {
+        outline: 3px solid var(--service-offwhite);
+        outline-offset: 3px;
+    }
+
+    .checkout-button:disabled {
+        cursor: not-allowed;
+        opacity: 0.55;
+    }
+
+    .payment-note {
+        margin: 0.8rem 0 0;
+        color: #b7bac4;
+        font-size: 0.76rem;
+        line-height: 1.45;
+    }
+
+    .questions {
+        display: grid;
+        grid-template-columns: minmax(190px, 0.65fr) minmax(280px, 1.35fr);
+        gap: clamp(2rem, 6vw, 6rem);
+        align-items: start;
+    }
+
+    .questions h2 {
+        max-width: 9ch;
+    }
+
+    .questions > div > a {
         display: inline-flex;
         align-items: center;
-        gap: 0.25rem;
+        gap: 0.45rem;
+        margin-top: 1.2rem;
+        color: var(--foreground);
+        font-size: 0.82rem;
     }
 
-    .typing-dots span {
-        width: 0.35rem;
-        height: 0.35rem;
-        border-radius: 999px;
-        background: currentColor;
-        opacity: 0.35;
-        animation: typing-pulse 1s ease-in-out infinite;
+    .questions form {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: end;
+        gap: 0.75rem;
     }
 
-    .typing-dots span:nth-child(2) {
-        animation-delay: 0.15s;
+    .questions textarea {
+        min-height: 112px;
+        resize: vertical;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--background);
+        padding: 0.9rem;
+        color: var(--foreground);
+        font: inherit;
+        line-height: 1.45;
     }
 
-    .typing-dots span:nth-child(3) {
-        animation-delay: 0.3s;
+    .questions textarea::placeholder {
+        color: color-mix(in oklab, var(--foreground) 62%, transparent);
+        opacity: 1;
     }
 
-    @keyframes typing-pulse {
-        0%,
-        80%,
-        100% {
-            transform: translateY(0);
-            opacity: 0.35;
+    .questions textarea:focus-visible {
+        outline: 3px solid var(--service-orange);
+        outline-offset: 2px;
+    }
+
+    .questions form button {
+        display: inline-flex;
+        min-width: 100px;
+        min-height: 48px;
+        align-items: center;
+        justify-content: center;
+        gap: 0.45rem;
+        border: 0;
+        border-radius: 6px;
+        background: var(--service-ink);
+        padding: 0.75rem 1rem;
+        color: var(--service-offwhite);
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    :global(.dark) .questions form button {
+        background: var(--service-offwhite);
+        color: var(--service-ink);
+    }
+
+    .questions form button:disabled {
+        cursor: not-allowed;
+        opacity: 0.45;
+    }
+
+    .questions form button:focus-visible {
+        outline: 3px solid var(--service-orange);
+        outline-offset: 2px;
+    }
+
+    .answer {
+        grid-column: 2;
+        margin: -1rem 0 0;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border);
+        line-height: 1.55;
+    }
+
+    .answer.error {
+        color: var(--destructive);
+    }
+
+    .answer a {
+        margin-inline-start: 0.35rem;
+        color: inherit;
+        font-weight: 700;
+    }
+
+    .question-note {
+        grid-column: 2;
+        margin: -1.25rem 0 0;
+        color: var(--muted-foreground);
+        font-size: 0.72rem;
+    }
+
+    .services-footer {
+        display: flex;
+        width: min(1120px, 100%);
+        align-items: center;
+        justify-content: center;
+        gap: 0.45rem;
+        margin-inline: auto;
+        padding-top: 1.2rem;
+        border-top: 1px solid var(--border);
+        color: var(--muted-foreground);
+        font-size: 0.75rem;
+    }
+
+    .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        clip-path: inset(50%);
+    }
+
+    .spin {
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    @media (max-width: 900px) {
+        .hero {
+            min-height: auto;
+            grid-template-columns: 1fr;
+            align-items: start;
         }
 
-        40% {
-            transform: translateY(-0.18rem);
-            opacity: 0.9;
+        .price-tool {
+            width: min(430px, 100%);
+        }
+
+        .booking {
+            grid-template-columns: 1fr;
+        }
+
+        .checkout-tool {
+            width: 100%;
+        }
+    }
+
+    @media (max-width: 720px) {
+        .section-head {
+            align-items: start;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .demo-row,
+        .demo-row-reverse {
+            grid-template-columns: 1fr;
+        }
+
+        .demo-row-reverse h3,
+        .demo-row-reverse :global(> :not(h3)) {
+            grid-column: auto;
+            grid-row: auto;
+        }
+
+        .process ol {
+            grid-template-columns: 1fr;
+        }
+
+        .process li {
+            min-height: 150px;
+            border-inline-end: 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .process li:last-child {
+            border-bottom: 0;
+        }
+
+        .questions {
+            grid-template-columns: 1fr;
+        }
+
+        .answer {
+            grid-column: auto;
+            margin-top: 0;
+        }
+
+        .question-note {
+            grid-column: auto;
+            margin-top: -1rem;
+        }
+    }
+
+    @media (max-width: 520px) {
+        .services-page {
+            gap: 3rem;
+        }
+
+        .hero,
+        .booking {
+            margin-inline: -0.5rem;
+            border-radius: 8px;
+        }
+
+        .hero {
+            gap: 1.25rem;
+            padding: 1.25rem;
+        }
+
+        .hero-actions {
+            margin-top: 1.5rem;
+        }
+
+        .price-tool {
+            padding: 1rem 1.2rem;
+        }
+
+        .price-tool > p {
+            margin-bottom: 0;
+        }
+
+        .mini-flow {
+            display: none;
+        }
+
+        .availability {
+            margin-top: 1rem;
+            padding-top: 0.75rem;
+        }
+
+        .hero-actions,
+        .action {
+            width: 100%;
+        }
+
+        .questions form {
+            grid-template-columns: 1fr;
+        }
+
+        .questions form button {
+            width: 100%;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .action {
+            transition: none;
+        }
+
+        .action:hover {
+            transform: none;
+        }
+
+        .spin {
+            animation: none;
         }
     }
 </style>
