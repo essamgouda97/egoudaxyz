@@ -1,120 +1,199 @@
 <script lang="ts">
-    import { ArrowDown, Sparkles } from "@lucide/svelte";
+    import { Plus, Trash2, WalletCards } from "@lucide/svelte";
+
+    type Category = "home" | "food" | "life" | "saving";
+    type ItemKey = "rent" | "groceries" | "phone";
+    type Expense = {
+        id: number;
+        name: string;
+        nameKey?: ItemKey;
+        amount: number;
+        category: Category;
+    };
 
     let { language = "en" }: { language?: "en" | "ar" } = $props();
-    let optimized = $state(false);
+    let income = $state(5200);
+    let nextId = 4;
+    let expenses = $state<Expense[]>([
+        { id: 1, name: "", nameKey: "rent", amount: 1820, category: "home" },
+        { id: 2, name: "", nameKey: "groceries", amount: 610, category: "food" },
+        { id: 3, name: "", nameKey: "phone", amount: 85, category: "life" },
+    ]);
 
     const copyByLanguage = {
         en: {
-            name: "Money autopilot",
-            state: "100% synthetic",
-            original: "Show original",
-            run: "Find the leaks",
-            outflow: "Monthly outflow",
-            found: "$520 found",
-            barsLabel: "Synthetic monthly spending categories",
-            notes: [
-                "3 subscriptions paused",
-                "2 grocery duplicates merged",
-                "$180 moved to home fund",
-            ],
+            title: "Monthly budget",
+            income: "Income",
+            spent: "Spent",
+            left: "Left",
+            item: "Item",
+            amount: "Amount",
+            category: "Category",
+            add: "Add",
+            remove: "Remove",
+            newItem: "New item",
+            categories: { home: "Home", food: "Food", life: "Personal", saving: "Saving" },
+            items: { rent: "Rent", groceries: "Groceries", phone: "Phone" },
         },
         ar: {
-            name: "مظبّط الفلوس",
-            state: "داتا خيالية 100%",
-            original: "رجّع الأصل",
-            run: "لقّط التسريب",
-            outflow: "مصروف الشهر",
-            found: "$520 اتوفّروا",
-            barsLabel: "تصنيفات مصروف شهرية خيالية",
-            notes: [
-                "وقف 3 اشتراكات",
-                "دمج عمليتين بقالة مكررين",
-                "حوّل $180 لصندوق البيت",
-            ],
+            title: "ميزانية الشهر",
+            income: "الدخل",
+            spent: "المصروف",
+            left: "الباقي",
+            item: "البند",
+            amount: "المبلغ",
+            category: "الفئة",
+            add: "ضيف",
+            remove: "مسح",
+            newItem: "بند جديد",
+            categories: { home: "البيت", food: "الأكل", life: "شخصي", saving: "توفير" },
+            items: { rent: "إيجار", groceries: "طلبات البيت", phone: "موبايل" },
         },
     } as const;
 
+    const categoryKeys = ["home", "food", "life", "saving"] as const;
+    const categoryColors: Record<Category, string> = {
+        home: "#ff6b35",
+        food: "#f4bf3a",
+        life: "#59a96a",
+        saving: "#62a8ea",
+    };
     const copy = $derived(copyByLanguage[language]);
-
-    const baseline = [
-        { label: { en: "Home", ar: "البيت" }, value: 1820, color: "#ff6b35" },
-        { label: { en: "Food", ar: "الأكل" }, value: 760, color: "#f4bf3a" },
-        { label: { en: "Life", ar: "الحياة" }, value: 640, color: "#59a96a" },
-        { label: { en: "Noise", ar: "الزحمة" }, value: 410, color: "#8f94a3" },
-    ];
-
-    const improved = [
-        { label: { en: "Home", ar: "البيت" }, value: 1820, color: "#ff6b35" },
-        { label: { en: "Food", ar: "الأكل" }, value: 610, color: "#f4bf3a" },
-        { label: { en: "Life", ar: "الحياة" }, value: 540, color: "#59a96a" },
-        { label: { en: "Noise", ar: "الزحمة" }, value: 120, color: "#8f94a3" },
-    ];
-
-    const categories = $derived(optimized ? improved : baseline);
-    const monthlySpend = $derived(
-        categories.reduce((total, category) => total + category.value, 0),
+    const spent = $derived(
+        expenses.reduce((total, expense) => total + Math.max(0, Number(expense.amount) || 0), 0),
     );
+    const left = $derived((Number(income) || 0) - spent);
+    const totals = $derived.by(() =>
+        Object.fromEntries(
+            categoryKeys.map((category) => [
+                category,
+                expenses
+                    .filter((expense) => expense.category === category)
+                    .reduce((total, expense) => total + Math.max(0, Number(expense.amount) || 0), 0),
+            ]),
+        ) as Record<Category, number>,
+    );
+    const chartBackground = $derived.by(() => {
+        if (spent <= 0) return "#2b2d35";
+
+        let cursor = 0;
+        const stops = categoryKeys.map((category) => {
+            const start = cursor;
+            cursor += (totals[category] / spent) * 100;
+            return `${categoryColors[category]} ${start}% ${cursor}%`;
+        });
+
+        return `conic-gradient(${stops.join(", ")})`;
+    });
+
+    function formatMoney(value: number) {
+        return `$${Math.abs(Math.round(value)).toLocaleString("en-CA")}`;
+    }
+
+    function expenseName(expense: Expense) {
+        return expense.nameKey ? copy.items[expense.nameKey] : expense.name;
+    }
+
+    function updateName(expense: Expense, event: Event) {
+        expense.nameKey = undefined;
+        expense.name = (event.currentTarget as HTMLInputElement).value;
+    }
+
+    function addExpense() {
+        expenses.push({ id: nextId++, name: copy.newItem, amount: 0, category: "life" });
+    }
+
+    function removeExpense(id: number) {
+        expenses = expenses.filter((expense) => expense.id !== id);
+    }
 </script>
 
-<div
-    class="finance-demo"
-    data-demo="synthetic-finance"
+<section
+    class="budget-app"
+    data-app="budget"
     lang={language}
     dir={language === "ar" ? "rtl" : "ltr"}
+    aria-label={copy.title}
 >
-    <div class="demo-bar">
-        <div>
-            <span class="demo-name">{copy.name}</span>
-            <span class="demo-state">{copy.state}</span>
+    <header>
+        <div class="app-title">
+            <WalletCards size={18} />
+            <h3>{copy.title}</h3>
         </div>
-        <button
-            type="button"
-            class:active={optimized}
-            aria-pressed={optimized}
-            onclick={() => (optimized = !optimized)}
-        >
-            <Sparkles size={16} />
-            {optimized ? copy.original : copy.run}
+        <button class="add-button" type="button" onclick={addExpense}>
+            <Plus size={16} /> {copy.add}
         </button>
-    </div>
+    </header>
 
-    <div class="finance-body">
-        <div class="total-block">
-            <span>{copy.outflow}</span>
-            <strong dir="ltr">${monthlySpend.toLocaleString("en-CA")}</strong>
-            <div class="delta" class:visible={optimized}>
-                <ArrowDown size={15} /> <span dir="ltr">{copy.found}</span>
+    <div class="budget-overview">
+        <label class="income-field">
+            <span>{copy.income}</span>
+            <span class="money-input" dir="ltr">
+                <i>$</i>
+                <input data-testid="budget-income" type="number" min="0" step="100" bind:value={income} />
+            </span>
+        </label>
+
+        <div class="chart-wrap" aria-label={`${copy.spent}: ${formatMoney(spent)}`}>
+            <div class="spend-chart" style:background={chartBackground}>
+                <div>
+                    <span>{copy.spent}</span>
+                    <strong dir="ltr">{formatMoney(spent)}</strong>
+                </div>
             </div>
         </div>
 
-        <div class="bars" aria-label={copy.barsLabel}>
-            {#each categories as category}
-                <div class="bar-row">
-                    <div class="bar-label">
-                        <span>{category.label[language]}</span>
-                        <span dir="ltr">${category.value}</span>
-                    </div>
-                    <div class="bar-track">
-                        <span
-                            style={`--bar-width: ${(category.value / 1900) * 100}%; --bar-color: ${category.color}`}
-                        ></span>
-                    </div>
-                </div>
-            {/each}
-        </div>
-
-        <div class="agent-note" class:visible={optimized} aria-live="polite">
-            {#each copy.notes as note}
-                <span>{note}</span>
-            {/each}
+        <div class:negative={left < 0} class="left-block">
+            <span>{copy.left}</span>
+            <strong dir="ltr">{left < 0 ? "−" : ""}{formatMoney(left)}</strong>
+            <div class="legend" aria-hidden="true">
+                {#each categoryKeys as category}
+                    <i style={`--legend-color: ${categoryColors[category]}`}></i>
+                {/each}
+            </div>
         </div>
     </div>
-</div>
+
+    <div class="expense-list">
+        <div class="list-head" aria-hidden="true">
+            <span>{copy.item}</span>
+            <span>{copy.category}</span>
+            <span>{copy.amount}</span>
+            <span></span>
+        </div>
+        {#each expenses as expense (expense.id)}
+            <div class="expense-row" data-testid="budget-row">
+                <input
+                    aria-label={copy.item}
+                    value={expenseName(expense)}
+                    oninput={(event) => updateName(expense, event)}
+                />
+                <select aria-label={copy.category} bind:value={expense.category}>
+                    {#each categoryKeys as category}
+                        <option value={category}>{copy.categories[category]}</option>
+                    {/each}
+                </select>
+                <span class="amount-field" dir="ltr">
+                    <i>$</i>
+                    <input aria-label={copy.amount} type="number" min="0" step="5" bind:value={expense.amount} />
+                </span>
+                <button
+                    class="remove-button"
+                    type="button"
+                    title={copy.remove}
+                    aria-label={`${copy.remove} ${expenseName(expense)}`}
+                    onclick={() => removeExpense(expense.id)}
+                >
+                    <Trash2 size={15} />
+                </button>
+            </div>
+        {/each}
+    </div>
+</section>
 
 <style>
-    .finance-demo {
-        min-height: 390px;
+    .budget-app {
+        min-height: 430px;
         overflow: hidden;
         border-radius: 8px;
         background: #111217;
@@ -122,176 +201,306 @@
         box-shadow: 0 6px 0 color-mix(in oklab, #111217 30%, transparent);
     }
 
-    .demo-bar {
+    header {
         display: flex;
+        min-height: 62px;
         align-items: center;
         justify-content: space-between;
         gap: 1rem;
-        padding: 1rem 1.1rem;
+        padding: 0.75rem 1rem;
         border-bottom: 1px solid #34363f;
     }
 
-    .demo-bar > div {
-        display: flex;
-        align-items: baseline;
-        gap: 0.65rem;
-        min-width: 0;
+    .app-title,
+    .add-button,
+    .remove-button {
+        display: inline-flex;
+        align-items: center;
     }
 
-    .demo-name {
-        font-weight: 700;
+    .app-title {
+        gap: 0.55rem;
     }
 
-    .demo-state {
-        color: #a9acb7;
-        font-size: 0.72rem;
+    h3 {
+        margin: 0;
+        font-size: 0.95rem;
+    }
+
+    button,
+    input,
+    select {
+        font: inherit;
     }
 
     button {
-        display: inline-flex;
-        min-height: 42px;
-        flex: none;
-        align-items: center;
-        gap: 0.45rem;
-        border: 0;
-        border-radius: 6px;
-        background: #ff6b35;
-        padding: 0.65rem 0.8rem;
-        color: #111217;
-        font: inherit;
-        font-size: 0.8rem;
-        font-weight: 700;
         cursor: pointer;
     }
 
-    button:hover,
-    button:focus-visible,
-    button.active {
+    .add-button {
+        min-height: 40px;
+        gap: 0.4rem;
+        border: 0;
+        border-radius: 6px;
+        background: #ff6b35;
+        padding: 0.55rem 0.72rem;
+        color: #111217;
+        font-size: 0.76rem;
+        font-weight: 700;
+    }
+
+    .add-button:hover,
+    .add-button:focus-visible {
         background: #ff8257;
     }
 
-    button:focus-visible {
-        outline: 3px solid #f7f7f3;
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible {
+        outline: 2px solid #ff8257;
         outline-offset: 2px;
     }
 
-    .finance-body {
+    .budget-overview {
         display: grid;
-        grid-template-columns: minmax(130px, 0.7fr) minmax(220px, 1.3fr);
-        gap: clamp(1.5rem, 4vw, 3.5rem);
-        padding: clamp(1.3rem, 4vw, 2.4rem);
-    }
-
-    .total-block {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        justify-content: center;
-    }
-
-    .total-block > span {
-        color: #a9acb7;
-        font-size: 0.78rem;
-    }
-
-    .total-block strong {
-        margin-top: 0.3rem;
-        font-size: clamp(2.2rem, 6vw, 4rem);
-        line-height: 1;
-        letter-spacing: 0;
-    }
-
-    .delta {
-        display: inline-flex;
+        grid-template-columns: minmax(150px, 0.8fr) minmax(150px, 1fr) minmax(150px, 0.8fr);
         align-items: center;
-        gap: 0.3rem;
-        margin-top: 1rem;
-        color: #111217;
-        background: #83d494;
-        padding: 0.35rem 0.5rem;
-        border-radius: 4px;
-        font-size: 0.76rem;
-        font-weight: 700;
-        opacity: 0;
-        transform: translateY(4px);
-        transition: opacity 180ms ease-out, transform 180ms ease-out;
+        gap: 1rem;
+        padding: clamp(1rem, 3vw, 1.6rem);
+        border-bottom: 1px solid #34363f;
     }
 
-    .delta.visible {
-        opacity: 1;
-        transform: translateY(0);
-    }
-
-    .bars {
+    .income-field,
+    .left-block {
         display: flex;
+        min-width: 0;
         flex-direction: column;
-        gap: 1rem;
     }
 
-    .bar-label {
+    .income-field > span:first-child,
+    .left-block > span,
+    .spend-chart span {
+        color: #a9acb7;
+        font-size: 0.68rem;
+    }
+
+    .money-input {
         display: flex;
-        justify-content: space-between;
-        gap: 1rem;
-        margin-bottom: 0.38rem;
-        color: #d8dae1;
-        font-size: 0.78rem;
+        align-items: baseline;
+        margin-top: 0.25rem;
     }
 
-    .bar-track {
-        height: 9px;
-        overflow: hidden;
-        border-radius: 2px;
-        background: #292b33;
+    .money-input i,
+    .amount-field i {
+        color: #a9acb7;
+        font-style: normal;
     }
 
-    .bar-track span {
-        display: block;
-        width: var(--bar-width);
-        height: 100%;
-        background: var(--bar-color);
-        transition: width 320ms cubic-bezier(0.16, 1, 0.3, 1);
+    .money-input i {
+        font-size: 1.7rem;
+        font-weight: 700;
     }
 
-    .agent-note {
-        grid-column: 1 / -1;
+    .money-input input {
+        width: 100%;
+        min-width: 0;
+        border: 0;
+        background: transparent;
+        color: #f7f7f3;
+        font-size: clamp(1.8rem, 5vw, 3rem);
+        font-weight: 700;
+        line-height: 1;
+    }
+
+    .chart-wrap {
+        display: grid;
+        place-items: center;
+    }
+
+    .spend-chart {
+        display: grid;
+        width: 132px;
+        aspect-ratio: 1;
+        place-items: center;
+        border-radius: 50%;
+    }
+
+    .spend-chart > div {
+        display: grid;
+        width: 84px;
+        aspect-ratio: 1;
+        place-content: center;
+        border-radius: 50%;
+        background: #111217;
+        text-align: center;
+    }
+
+    .spend-chart strong {
+        margin-top: 0.15rem;
+        font-size: 1rem;
+    }
+
+    .left-block {
+        align-items: flex-end;
+        text-align: end;
+    }
+
+    .left-block strong {
+        margin-top: 0.25rem;
+        color: #83d494;
+        font-size: clamp(1.8rem, 5vw, 3rem);
+        line-height: 1;
+    }
+
+    .left-block.negative strong {
+        color: #ff8257;
+    }
+
+    .legend {
         display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem 1.2rem;
-        min-height: 1.2rem;
-        color: #c8cad2;
+        gap: 0.3rem;
+        margin-top: 0.8rem;
+    }
+
+    .legend i {
+        width: 16px;
+        height: 4px;
+        border-radius: 1px;
+        background: var(--legend-color);
+    }
+
+    .expense-list {
+        padding: 0.55rem 1rem 1rem;
+    }
+
+    .list-head,
+    .expense-row {
+        display: grid;
+        grid-template-columns: minmax(130px, 1.3fr) minmax(100px, 0.8fr) minmax(100px, 0.65fr) 36px;
+        align-items: center;
+        gap: 0.55rem;
+    }
+
+    .list-head {
+        padding: 0.3rem 0.55rem;
+        color: #8f929e;
+        font-size: 0.6rem;
+    }
+
+    .expense-row {
+        min-height: 48px;
+        border-top: 1px solid #2c2e36;
+    }
+
+    .expense-row > input,
+    .expense-row select,
+    .amount-field {
+        width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+        border: 1px solid transparent;
+        border-radius: 4px;
+        background: transparent;
+        color: #e2e3e8;
         font-size: 0.75rem;
-        opacity: 0;
-        transition: opacity 180ms ease-out;
     }
 
-    .agent-note.visible {
-        opacity: 1;
+    .expense-row > input,
+    .expense-row select {
+        min-height: 36px;
+        padding: 0.35rem 0.45rem;
+    }
+
+    .expense-row input:hover,
+    .expense-row select:hover {
+        border-color: #484b57;
+    }
+
+    .expense-row select {
+        background: #111217;
+    }
+
+    .amount-field {
+        display: flex;
+        align-items: center;
+        padding-inline-start: 0.45rem;
+    }
+
+    .amount-field input {
+        width: 100%;
+        min-width: 0;
+        border: 0;
+        background: transparent;
+        padding: 0.45rem 0.25rem;
+        color: #e2e3e8;
+        text-align: end;
+    }
+
+    .remove-button {
+        width: 34px;
+        height: 34px;
+        justify-content: center;
+        border: 0;
+        border-radius: 4px;
+        background: transparent;
+        color: #8f929e;
+    }
+
+    .remove-button:hover,
+    .remove-button:focus-visible {
+        background: #2b2d35;
+        color: #ff8257;
+    }
+
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+        margin: 0;
+        appearance: none;
     }
 
     @media (max-width: 620px) {
-        .demo-bar {
-            align-items: flex-start;
+        .budget-overview {
+            grid-template-columns: 1fr 1fr;
         }
 
-        .demo-bar > div {
-            flex-direction: column;
-            gap: 0.2rem;
+        .chart-wrap {
+            grid-column: 1 / -1;
+            grid-row: 1;
         }
 
-        .finance-body {
-            grid-template-columns: 1fr;
+        .income-field,
+        .left-block {
+            align-items: center;
+            text-align: center;
         }
 
-        .agent-note {
-            grid-column: auto;
+        .money-input input,
+        .left-block strong {
+            font-size: 1.8rem;
         }
-    }
 
-    @media (prefers-reduced-motion: reduce) {
-        .bar-track span,
-        .delta,
-        .agent-note {
-            transition: none;
+        .list-head {
+            display: none;
+        }
+
+        .expense-row {
+            grid-template-columns: minmax(0, 1fr) minmax(90px, 0.7fr) 34px;
+            padding-block: 0.4rem;
+        }
+
+        .expense-row > select {
+            grid-column: 1;
+            grid-row: 2;
+        }
+
+        .amount-field {
+            grid-column: 2;
+            grid-row: 1 / 3;
+        }
+
+        .remove-button {
+            grid-column: 3;
+            grid-row: 1 / 3;
         }
     }
 </style>

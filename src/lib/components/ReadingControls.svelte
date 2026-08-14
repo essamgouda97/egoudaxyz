@@ -8,7 +8,9 @@
     import type { ServicesLanguage } from "$lib/services-language";
     import { browser } from "$app/environment";
     import { page } from "$app/state";
+    import { Moon, SlidersHorizontal, Sun, X } from "@lucide/svelte";
 
+    let { inline = false }: { inline?: boolean } = $props();
     let open = $state(false);
 
     const focusOptions: { value: FocusStyle; label: string }[] = [
@@ -24,6 +26,29 @@
         { value: "en", label: "EN" },
         { value: "ar", label: "عربي" },
     ];
+    const controlsCopy = $derived(
+        isServicesPage && servicesLanguage.current === "ar"
+            ? {
+                  title: "الشكل",
+                  theme: "المظهر",
+                  language: "اللغة",
+                  reset: "رجّع",
+                  close: "اقفل",
+                  hint: "Esc للقفل",
+                  light: "فاتح",
+                  dark: "غامق",
+              }
+            : {
+                  title: "Style",
+                  theme: "Theme",
+                  language: "Language",
+                  reset: "Reset",
+                  close: "Close",
+                  hint: "Esc to close",
+                  light: "Light mode",
+                  dark: "Dark mode",
+              },
+    );
     type ThemeMode = "light" | "dark";
 
     function currentThemeParam() {
@@ -51,11 +76,28 @@
     function selectTheme(value: ThemeMode) {
         setMode(value);
         updateServiceUrl({ theme: value });
+        if (inline) open = false;
     }
 
     function selectLanguage(value: ServicesLanguage) {
         servicesLanguage.current = value;
         updateServiceUrl({ lang: value });
+        if (inline) open = false;
+    }
+
+    function resetControls() {
+        readingPrefs.reset();
+        if (!isServicesPage) return;
+
+        setMode("system");
+        servicesLanguage.reset();
+        if (browser) {
+            const url = new URL(window.location.href);
+            url.searchParams.delete("lang");
+            url.searchParams.delete("theme");
+            replaceState(url, page.state);
+        }
+        if (inline) open = false;
     }
 
     function handleKeydown(e: KeyboardEvent) {
@@ -75,14 +117,11 @@
     <!-- Toggle button -->
     <button
         class="controls-toggle"
+        class:inline
         onclick={() => (open = !open)}
-        aria-label="Reading controls"
+        aria-label={controlsCopy.title}
     >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-            <line x1="4" y1="6" x2="20" y2="6" />
-            <line x1="4" y1="12" x2="20" y2="12" />
-            <line x1="4" y1="18" x2="14" y2="18" />
-        </svg>
+        <SlidersHorizontal size={15} />
     </button>
 
     {#if open}
@@ -90,55 +129,49 @@
         <button
             class="controls-backdrop"
             onclick={() => (open = false)}
-            aria-label="Close controls"
+            aria-label={controlsCopy.close}
             tabindex="-1"
         ></button>
 
         <!-- Panel -->
-        <div class="controls-panel">
+        <div class="controls-panel" class:inline>
             <div class="panel-header">
-                <span class="panel-title">Style</span>
+                <span class="panel-title">{controlsCopy.title}</span>
                 <button
                     class="close-btn"
                     onclick={() => (open = false)}
-                    aria-label="Close controls"
+                    aria-label={controlsCopy.close}
                 >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                        <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                    </svg>
+                    <X size={14} />
                 </button>
             </div>
 
             <!-- Theme -->
             <div class="control-group">
-                <span class="control-label">Theme</span>
+                <span class="control-label">{controlsCopy.theme}</span>
                 <div class="control-buttons">
                     <button
                         class="toggle-btn"
                         class:active={mode.current === "light"}
                         onclick={() => selectTheme("light")}
-                        aria-label="Light mode"
+                        aria-label={controlsCopy.light}
                     >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" /><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" /><line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" /><line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-                        </svg>
+                        <Sun size={14} />
                     </button>
                     <button
                         class="toggle-btn"
                         class:active={mode.current === "dark"}
                         onclick={() => selectTheme("dark")}
-                        aria-label="Dark mode"
+                        aria-label={controlsCopy.dark}
                     >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-                        </svg>
+                        <Moon size={14} />
                     </button>
                 </div>
             </div>
 
             {#if isServicesPage}
                 <div class="control-group">
-                    <span class="control-label">Language</span>
+                    <span class="control-label">{controlsCopy.language}</span>
                     <div class="control-buttons">
                         {#each languageOptions as opt}
                             <button
@@ -204,8 +237,8 @@
             {/if}
 
             <div class="panel-footer">
-                <button class="reset-btn" onclick={() => { readingPrefs.reset(); }}>Reset</button>
-                <span class="hint">Esc to close</span>
+                <button class="reset-btn" onclick={resetControls}>{controlsCopy.reset}</button>
+                <span class="hint">{controlsCopy.hint}</span>
             </div>
         </div>
     {/if}
@@ -232,6 +265,13 @@
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     }
     .controls-toggle:hover { opacity: 1; }
+    .controls-toggle.inline {
+        position: static;
+        width: 34px;
+        height: 34px;
+        border-radius: 6px;
+        opacity: 1;
+    }
 
     .controls-backdrop {
         position: fixed;
@@ -249,7 +289,7 @@
         z-index: 52;
         background: var(--card);
         border: 1px solid var(--border);
-        border-radius: 14px;
+        border-radius: 8px;
         padding: 16px;
         display: flex;
         flex-direction: column;
@@ -257,6 +297,11 @@
         min-width: 220px;
         max-width: 320px;
         box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+    }
+    .controls-panel.inline {
+        top: 64px;
+        right: 16px;
+        bottom: auto;
     }
 
     .panel-header {

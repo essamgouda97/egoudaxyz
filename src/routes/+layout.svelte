@@ -25,6 +25,9 @@
     };
 
     let posts: BlogItem[] = $state([]);
+    const hasInlineReadingControls = $derived(
+        page.url.pathname === "/" || page.url.pathname === "/services",
+    );
 
     async function loadBlogPosts() {
         try {
@@ -236,7 +239,11 @@
                 </NavigationMenu.List>
             </NavigationMenu.Root>
 
-            <div class="ml-auto"></div>
+            <div class="ml-auto">
+                {#if hasInlineReadingControls}
+                    <ReadingControls inline />
+                {/if}
+            </div>
         </div>
     </header>
 
@@ -245,4 +252,6 @@
     </main>
 </div>
 
-<ReadingControls />
+{#if !hasInlineReadingControls}
+    <ReadingControls />
+{/if}

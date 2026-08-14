@@ -8,7 +8,6 @@
         ArrowLeft,
         ArrowRight,
         CalendarDays,
-        Check,
         LoaderCircle,
         Mail,
         Send,
@@ -39,107 +38,70 @@
             dir: "ltr",
             title: "One-week AI workflow sprint | Essam Gouda",
             description:
-                "One custom AI workflow built around your work and data for $250. " +
-                "Requirements on Sunday, one focused build week, then setup and review.",
+                "One AI workflow built around your tools and work data for $250.",
             mark: "SaaSaaS!!",
-            markLong: "SaaS as a Service.",
-            h1: "Your weird workflow. Working in one week.",
-            intro:
-                "I build one specific AI workflow around your day-to-day work and your own data.",
-            priceSuffix: "once · one focused sprint",
-            primaryCta: "See what that means",
+            h1: "One workflow. Built in one week.",
+            intro: "Built around your tools and work data.",
+            priceSuffix: "once",
+            primaryCta: "Try it",
             secondaryCta: "Pay + book Sunday",
-            proofHeading: "This kind of thing.",
-            proofSub: "Every number, name, file, and event is fictional.",
-            demoLabels: ["Your money", "Your house", "Your paperwork"],
-            processHeading: "Two Sundays. One build week.",
+            heroFlow: ["CALL", "BUILD", "CALL"],
+            availability: "Sundays",
+            proofHeading: "Try it.",
+            processHeading: "Sunday. Six build days. Sunday.",
             process: [
-                {
-                    title: "Sunday · requirements",
-                    text: "We pick one painful workflow and define done.",
-                },
-                {
-                    title: "Monday–Saturday · build",
-                    text: "I wire the workflow around your tools and data.",
-                },
-                {
-                    title: "Sunday · setup + review",
-                    text: "Two hours. We install it, run it, and hand it over.",
-                },
+                { title: "Sunday", text: "Pick the workflow" },
+                { title: "Monday–Saturday", text: "I build it" },
+                { title: "Sunday · 2 hours", text: "Install + handoff" },
             ],
-            packageHeading: "One workflow. Fixed price.",
-            packageItems: [
-                "Requirements call",
-                "One focused build week",
-                "Two-hour setup + review",
-                "Your tools. Your data. Your control.",
-            ],
-            paymentSafe: "Cal.com confirms the slot only after Stripe payment.",
-            checkout: "Pay securely + choose Sunday",
-            checkoutUnavailable: "Paid booking opens soon.",
-            checkoutUnavailableSub:
-                "Ask a question or email me before the first slot opens.",
-            questionsHeading: "One question? Ask it.",
-            questionPlaceholder: "Will this work with my spreadsheets and email?",
+            packageHeading: "One workflow",
+            packageFlow: ["Call", "Build", "Handoff"],
+            paymentSafe: "Paid via Stripe.",
+            checkout: "Pay $250 + book",
+            checkoutUnavailable: "Booking opens soon",
+            checkoutUnavailableSub: "Send one question.",
+            questionsHeading: "Not sure?",
+            questionPlaceholder: "Ask one question",
             ask: "Ask",
-            asking: "Asking",
-            questionPrivacy: "Sent to DeepSeek. Do not paste private or client data.",
+            asking: "One second",
+            questionPrivacy: "No private data.",
             emailInstead: "Email egouda@bokralabs.com",
-            synthetic: "Public demos use synthetic data only.",
+            questionOffline: "Questions are offline.",
         },
         ar: {
             lang: "ar",
             dir: "rtl",
-            title: "AI workflow في أسبوع | عصام جودة",
+            title: "Workflow بالـAI في أسبوع | عصام جودة",
             description:
-                "AI workflow واحدة معمولة على شغلك وداتا بتاعتك بـ250 دولار. " +
-                "متطلبات يوم الأحد، أسبوع شغل، وبعدها setup ومراجعة.",
+                "Workflow بالـAI متفصلة على أدواتك وبيانات شغلك بـ250$.",
             mark: "SaaSaaS!!",
-            markLong: "SaaS as a Service.",
-            h1: "الـworkflow الغريبة بتاعتك. شغالة في أسبوع.",
-            intro:
-                "ببني AI workflow واحدة محددة حوالين شغلك اليومي " +
-                "وداتا بتاعتك.",
-            priceSuffix: "مرة واحدة · sprint واحدة",
-            primaryCta: "شوف أمثلة",
-            secondaryCta: "ادفع واحجز الأحد",
-            proofHeading: "حاجات زي دي.",
-            proofSub: "كل الأرقام والأسامي والملفات والأحداث خيالية.",
-            demoLabels: ["فلوسك", "بيتك", "ورقك"],
-            processHeading: "اتنين أحد. وأسبوع شغل.",
+            h1: "Workflow واحدة. بتتبني في أسبوع.",
+            intro: "متفصلة على أدواتك وبيانات شغلك.",
+            priceSuffix: "مرة واحدة",
+            primaryCta: "جربها",
+            secondaryCta: "ادفع واحجز الحد",
+            heroFlow: ["مكالمة", "بناء", "مكالمة"],
+            availability: "كل حد",
+            proofHeading: "جربها.",
+            processHeading: "الحد. ٦ أيام شغل. الحد.",
             process: [
-                {
-                    title: "الأحد · متطلبات",
-                    text: "بنختار workflow واحدة موجعة ونحدد شكل النجاح.",
-                },
-                {
-                    title: "الاثنين–السبت · بناء",
-                    text: "بربط الـworkflow بأدواتك وداتا بتاعتك.",
-                },
-                {
-                    title: "الأحد · setup ومراجعة",
-                    text: "ساعتين. بنركبها، نجربها، وأسلمهالك.",
-                },
+                { title: "الحد", text: "نختار Workflow" },
+                { title: "الاتنين–السبت", text: "أبنيها" },
+                { title: "الحد · ساعتين", text: "نركبها ونسلمها" },
             ],
-            packageHeading: "workflow واحدة. سعر ثابت.",
-            packageItems: [
-                "مكالمة متطلبات",
-                "أسبوع شغل مركز",
-                "ساعتين setup ومراجعة",
-                "أدواتك. داتا بتاعتك. تحكمك.",
-            ],
-            paymentSafe: "Cal.com بيأكد الـslot بعد الدفع على Stripe بس.",
-            checkout: "ادفع بأمان واختار الأحد",
-            checkoutUnavailable: "الحجز المدفوع هيفتح قريب.",
-            checkoutUnavailableSub:
-                "اسأل سؤال أو ابعتلي إيميل قبل أول slot.",
-            questionsHeading: "سؤال واحد؟ اسأله.",
-            questionPlaceholder: "ينفع مع الـspreadsheets والإيميل بتوعي؟",
+            packageHeading: "Workflow واحدة",
+            packageFlow: ["مكالمة", "بناء", "تسليم"],
+            paymentSafe: "الدفع بـ Stripe.",
+            checkout: "ادفع 250$ واحجز",
+            checkoutUnavailable: "الحجز هيفتح قريب",
+            checkoutUnavailableSub: "ابعت سؤال.",
+            questionsHeading: "مش متأكد؟",
+            questionPlaceholder: "اسأل سؤال واحد",
             ask: "اسأل",
-            asking: "بيجاوب",
-            questionPrivacy: "بيتبعث لـDeepSeek. متبعتش داتا خاصة أو داتا عميل.",
-            emailInstead: "ابعت لـ egouda@bokralabs.com",
-            synthetic: "كل الـdemos العامة بداتا خيالية بس.",
+            asking: "ثواني",
+            questionPrivacy: "من غير بيانات خاصة.",
+            emailInstead: "ابعت إيميل لـ egouda@bokralabs.com",
+            questionOffline: "الأسئلة واقفة دلوقتي.",
         },
     } as const;
 
@@ -168,16 +130,14 @@
                 throw new Error(
                     typeof payload?.message === "string"
                         ? payload.message
-                        : "Questions are offline.",
+                        : copy.questionOffline,
                 );
             }
 
             questionAnswer = payload.answer;
         } catch (error) {
             questionError =
-                error instanceof Error
-                    ? error.message
-                    : "Questions are offline.";
+                error instanceof Error ? error.message : copy.questionOffline;
         } finally {
             askingQuestion = false;
         }
@@ -196,10 +156,7 @@
 <div class="services-page" lang={copy.lang} dir={copy.dir}>
     <section class="hero" aria-labelledby="services-title">
         <div class="hero-copy">
-            <p class="brand-mark" dir="ltr">
-                <strong>{copy.mark}</strong>
-                <span>{copy.markLong}</span>
-            </p>
+            <p class="brand-mark" dir="ltr">{copy.mark}</p>
             <h1 id="services-title">{copy.h1}</h1>
             <p class="hero-intro">{copy.intro}</p>
             <div class="hero-actions">
@@ -218,41 +175,32 @@
             </div>
         </div>
 
-        <div class="price-tool" aria-label="Service price and scope">
+        <div class="price-tool" aria-label="Service price and schedule">
             <div class="price-line" dir="ltr">
                 <strong>{data.offer.displayPrice}</strong>
                 <span>{data.offer.currency.toUpperCase()}</span>
             </div>
             <p>{copy.priceSuffix}</p>
-            <div class="mini-flow" dir="ltr" aria-hidden="true">
-                <span>CALL</span><i></i><span>BUILD</span><i></i><span>CALL</span>
+            <div class="mini-flow" aria-hidden="true">
+                {#each copy.heroFlow as item, index}
+                    <span>{item}</span>
+                    {#if index < copy.heroFlow.length - 1}<i></i>{/if}
+                {/each}
             </div>
-            <div class="availability" dir="ltr">
+            <div class="availability">
                 <CalendarDays size={18} />
-                <span>Sundays · egouda@bokralabs.com</span>
+                <span>{copy.availability}</span>
+                <b dir="ltr">egouda@bokralabs.com</b>
             </div>
         </div>
     </section>
 
     <section class="proof" id="proof" aria-labelledby="proof-title">
-        <header class="section-head">
-            <h2 id="proof-title">{copy.proofHeading}</h2>
-            <p>{copy.proofSub}</p>
-        </header>
-
-        <div class="demo-list">
-            <article class="demo-row">
-                <h3>{copy.demoLabels[0]}</h3>
-                <FinanceWorkflowDemo {language} />
-            </article>
-            <article class="demo-row demo-row-reverse">
-                <h3>{copy.demoLabels[1]}</h3>
-                <HomeServerWorkflowDemo {language} />
-            </article>
-            <article class="demo-row">
-                <h3>{copy.demoLabels[2]}</h3>
-                <PaperworkWorkflowDemo {language} />
-            </article>
+        <h2 id="proof-title">{copy.proofHeading}</h2>
+        <div class="app-stack">
+            <FinanceWorkflowDemo {language} />
+            <HomeServerWorkflowDemo {language} />
+            <PaperworkWorkflowDemo {language} />
         </div>
     </section>
 
@@ -273,12 +221,22 @@
 
     <section class="booking" id="book" aria-labelledby="booking-title">
         <div class="booking-copy">
-            <h2 id="booking-title">{copy.packageHeading}</h2>
-            <ul>
-                {#each copy.packageItems as item}
-                    <li><Check size={17} /> <span>{item}</span></li>
+            <h2 id="booking-title">
+                <span>{copy.packageHeading}</span>
+                <b dir="ltr">{data.offer.displayPrice}.</b>
+            </h2>
+            <div class="package-flow">
+                {#each copy.packageFlow as item, index}
+                    <strong>{item}</strong>
+                    {#if index < copy.packageFlow.length - 1}
+                        {#if copy.dir === "rtl"}
+                            <ArrowLeft size={18} />
+                        {:else}
+                            <ArrowRight size={18} />
+                        {/if}
+                    {/if}
                 {/each}
-            </ul>
+            </div>
         </div>
 
         <div class="checkout-tool">
@@ -344,11 +302,6 @@
             </p>
         {/if}
     </section>
-
-    <footer class="services-footer">
-        <ShieldCheck size={15} />
-        <span>{copy.synthetic}</span>
-    </footer>
 </div>
 
 <style>
@@ -361,24 +314,27 @@
         --service-orange-light: #ff8257;
         --service-ink: #111217;
         --service-offwhite: #f8f8f4;
-        --service-rule: color-mix(in oklab, currentColor 20%, transparent);
         display: flex;
         flex-direction: column;
-        gap: clamp(4.5rem, 9vw, 8rem);
+        gap: 6rem;
         padding-bottom: 2rem;
+    }
+
+    .services-page[dir="rtl"] {
+        font-family: "Cairo", sans-serif;
     }
 
     .hero {
         display: grid;
         box-sizing: border-box;
-        min-height: min(570px, calc(100svh - 12rem));
+        min-height: min(540px, calc(100svh - 11rem));
         grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
         align-items: end;
-        gap: clamp(2rem, 7vw, 7rem);
+        gap: 5rem;
         overflow: hidden;
         border-radius: 8px;
         background: var(--service-orange);
-        padding: clamp(1.5rem, 4vw, 3.5rem);
+        padding: 3.25rem;
         color: var(--service-ink);
     }
 
@@ -387,24 +343,9 @@
     }
 
     .brand-mark {
-        display: flex;
-        align-items: baseline;
-        gap: 0.75rem;
-        margin: 0 0 clamp(1rem, 2.5vw, 2rem);
-    }
-
-    .brand-mark strong {
-        font-size: clamp(1.35rem, 3vw, 2.2rem);
-    }
-
-    .brand-mark span {
-        font-size: 0.68rem;
+        margin: 0 0 1.5rem;
+        font-size: 1.65rem;
         font-weight: 700;
-        text-transform: uppercase;
-    }
-
-    .services-page[dir="rtl"] .brand-mark {
-        justify-content: flex-end;
     }
 
     h1,
@@ -415,18 +356,23 @@
     }
 
     h1 {
-        max-width: 15ch;
+        max-width: 14ch;
         margin: 0;
-        font-size: clamp(2.8rem, 6vw, 5rem);
+        font-size: 4.75rem;
         line-height: 0.98;
         letter-spacing: 0;
         text-wrap: balance;
     }
 
+    .services-page[dir="rtl"] h1 {
+        max-width: 15ch;
+        line-height: 1.18;
+    }
+
     .hero-intro {
-        max-width: 53ch;
-        margin: clamp(1.4rem, 3vw, 2.2rem) 0 0;
-        font-size: clamp(1.05rem, 2vw, 1.35rem);
+        max-width: 43ch;
+        margin: 1.65rem 0 0;
+        font-size: 1.25rem;
         line-height: 1.5;
     }
 
@@ -465,20 +411,19 @@
     }
 
     .action-light {
-        border: 1px solid var(--service-ink);
+        border: 1px solid color-mix(in oklab, var(--service-ink) 35%, transparent);
+        background: #ff986f;
         color: var(--service-ink);
     }
 
-    .action-light:hover {
-        background: color-mix(in srgb, var(--service-offwhite) 28%, transparent);
-    }
-
     .price-tool {
-        align-self: end;
-        border: 2px solid var(--service-ink);
+        width: 100%;
+        box-sizing: border-box;
+        border: 1px solid color-mix(in oklab, var(--service-ink) 25%, transparent);
         border-radius: 8px;
-        background: color-mix(in srgb, var(--service-offwhite) 24%, transparent);
-        padding: clamp(1.2rem, 3vw, 1.8rem);
+        background: var(--service-offwhite);
+        padding: 1.5rem 1.6rem;
+        box-shadow: 8px 8px 0 var(--service-ink);
     }
 
     .price-line {
@@ -487,50 +432,55 @@
         gap: 0.55rem;
     }
 
-    .services-page[dir="rtl"] .price-line,
-    .services-page[dir="rtl"] .checkout-price {
-        justify-content: flex-end;
-    }
-
     .price-line strong {
-        font-size: clamp(2.6rem, 6vw, 4.7rem);
+        font-size: 3.45rem;
         line-height: 1;
         letter-spacing: 0;
     }
 
-    .price-line span,
-    .price-tool > p {
-        font-size: 0.75rem;
+    .price-line span {
+        font-size: 0.72rem;
         font-weight: 700;
     }
 
     .price-tool > p {
-        margin: 0.5rem 0 1.8rem;
+        margin: 0.45rem 0 1.5rem;
+        font-size: 0.75rem;
+        font-weight: 700;
     }
 
     .mini-flow {
         display: grid;
         grid-template-columns: auto 1fr auto 1fr auto;
         align-items: center;
-        gap: 0.5rem;
-        font-size: 0.62rem;
+        gap: 0.45rem;
+        direction: ltr;
+        color: #4e5058;
+        font-size: 0.6rem;
         font-weight: 700;
     }
 
     .mini-flow i {
-        height: 2px;
-        background: var(--service-ink);
+        height: 1px;
+        background: #aaadb6;
     }
 
     .availability {
-        display: flex;
+        display: grid;
+        grid-template-columns: auto auto minmax(0, 1fr);
         align-items: center;
-        gap: 0.55rem;
-        margin-top: 1.5rem;
+        gap: 0.5rem;
+        margin-top: 1.4rem;
+        border-top: 1px solid #d8d8d0;
         padding-top: 1rem;
-        border-top: 1px solid color-mix(in srgb, var(--service-ink) 35%, transparent);
-        font-size: 0.72rem;
-        font-weight: 700;
+        font-size: 0.7rem;
+    }
+
+    .availability b {
+        overflow: hidden;
+        text-align: end;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     .proof,
@@ -540,89 +490,45 @@
         margin-inline: auto;
     }
 
-    .section-head {
-        display: flex;
-        align-items: end;
-        justify-content: space-between;
-        gap: 2rem;
-        margin-bottom: clamp(2rem, 5vw, 4rem);
-    }
-
-    .section-head h2,
-    .process h2,
-    .booking h2,
-    .questions h2 {
+    h2 {
         margin: 0;
-        font-size: clamp(2.2rem, 5vw, 4rem);
-        line-height: 1;
+        font-size: 3.2rem;
+        line-height: 1.05;
         letter-spacing: 0;
         text-wrap: balance;
     }
 
-    .section-head p {
-        max-width: 40ch;
-        margin: 0;
-        color: var(--muted-foreground);
-        line-height: 1.5;
+    .proof > h2 {
+        margin-bottom: 2.25rem;
     }
 
-    .demo-list {
-        display: flex;
-        flex-direction: column;
-        gap: clamp(4rem, 9vw, 8rem);
-    }
-
-    .demo-row {
+    .app-stack {
         display: grid;
-        grid-template-columns: minmax(110px, 0.28fr) minmax(0, 1.72fr);
-        align-items: start;
-        gap: clamp(1.2rem, 4vw, 4rem);
-    }
-
-    .demo-row-reverse {
-        grid-template-columns: minmax(0, 1.72fr) minmax(110px, 0.28fr);
-    }
-
-    .demo-row-reverse h3 {
-        grid-column: 2;
-        grid-row: 1;
-    }
-
-    .demo-row-reverse :global(> :not(h3)) {
-        grid-column: 1;
-        grid-row: 1;
-    }
-
-    .demo-row h3 {
-        margin: 0;
-        padding-top: 0.75rem;
-        font-size: clamp(1rem, 2vw, 1.35rem);
-        line-height: 1.1;
+        gap: 2.6rem;
     }
 
     .process h2 {
-        max-width: 11ch;
+        max-width: 13ch;
     }
 
     .process ol {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 0;
-        margin: clamp(2.4rem, 6vw, 5rem) 0 0;
+        margin: 3rem 0 0;
         padding: 0;
-        list-style: none;
         border-top: 1px solid var(--border);
         border-bottom: 1px solid var(--border);
+        list-style: none;
     }
 
     .process li {
         display: grid;
-        min-height: 210px;
+        min-height: 180px;
         grid-template-columns: auto 1fr;
         align-content: space-between;
         gap: 1rem;
-        padding: 1.2rem;
         border-inline-end: 1px solid var(--border);
+        padding: 1.2rem;
     }
 
     .process li:last-child {
@@ -648,48 +554,57 @@
 
     .process h3 {
         margin: 0;
-        font-size: 1.1rem;
+        font-size: 1.05rem;
     }
 
     .process li p {
-        max-width: 30ch;
-        margin: 0.55rem 0 0;
+        margin: 0.45rem 0 0;
         color: var(--muted-foreground);
-        line-height: 1.5;
+        line-height: 1.45;
     }
 
     .booking {
         display: grid;
         grid-template-columns: minmax(0, 1fr) minmax(310px, 0.72fr);
-        gap: clamp(2.5rem, 8vw, 8rem);
+        gap: 6rem;
         border-radius: 8px;
         background: var(--service-ink);
-        padding: clamp(1.5rem, 5vw, 4.8rem);
+        padding: 4rem;
         color: var(--service-offwhite);
     }
 
-    .booking-copy ul {
-        display: flex;
-        flex-direction: column;
-        gap: 0.85rem;
-        margin: 2rem 0 0;
-        padding: 0;
-        list-style: none;
+    .booking-copy h2 span,
+    .booking-copy h2 b {
+        display: block;
     }
 
-    .booking-copy li {
+    .booking-copy h2 b {
+        color: var(--service-orange);
+        font-weight: inherit;
+    }
+
+    .package-flow {
         display: flex;
         align-items: center;
-        gap: 0.65rem;
+        gap: 0.85rem;
+        margin-top: 2rem;
         color: #d7d8de;
+    }
+
+    .package-flow strong {
+        font-size: 0.8rem;
+    }
+
+    .package-flow :global(svg) {
+        color: var(--service-orange);
     }
 
     .checkout-tool {
         align-self: center;
         border: 1px solid #484b57;
         border-radius: 8px;
-        padding: clamp(1.2rem, 4vw, 2rem);
         background: #1b1d24;
+        padding: 2rem;
     }
 
     .checkout-price {
@@ -700,7 +615,7 @@
     }
 
     .checkout-price strong {
-        font-size: clamp(2.5rem, 6vw, 4rem);
+        font-size: 3.5rem;
         line-height: 1;
         letter-spacing: 0;
     }
@@ -715,6 +630,7 @@
         display: inline-flex;
         width: 100%;
         min-height: 52px;
+        box-sizing: border-box;
         align-items: center;
         justify-content: center;
         gap: 0.55rem;
@@ -748,18 +664,17 @@
         margin: 0.8rem 0 0;
         color: #b7bac4;
         font-size: 0.76rem;
-        line-height: 1.45;
     }
 
     .questions {
         display: grid;
         grid-template-columns: minmax(190px, 0.65fr) minmax(280px, 1.35fr);
-        gap: clamp(2rem, 6vw, 6rem);
         align-items: start;
+        gap: 5rem;
     }
 
     .questions h2 {
-        max-width: 9ch;
+        max-width: 8ch;
     }
 
     .questions > div > a {
@@ -779,7 +694,7 @@
     }
 
     .questions textarea {
-        min-height: 112px;
+        min-height: 100px;
         resize: vertical;
         border: 1px solid var(--border);
         border-radius: 8px;
@@ -835,8 +750,8 @@
     .answer {
         grid-column: 2;
         margin: -1rem 0 0;
-        padding-top: 1rem;
         border-top: 1px solid var(--border);
+        padding-top: 1rem;
         line-height: 1.55;
     }
 
@@ -855,19 +770,6 @@
         margin: -1.25rem 0 0;
         color: var(--muted-foreground);
         font-size: 0.72rem;
-    }
-
-    .services-footer {
-        display: flex;
-        width: min(1120px, 100%);
-        align-items: center;
-        justify-content: center;
-        gap: 0.45rem;
-        margin-inline: auto;
-        padding-top: 1.2rem;
-        border-top: 1px solid var(--border);
-        color: var(--muted-foreground);
-        font-size: 0.75rem;
     }
 
     .sr-only {
@@ -890,11 +792,17 @@
         }
     }
 
-    @media (max-width: 900px) {
+    @media (max-width: 980px) {
         .hero {
             min-height: auto;
             grid-template-columns: 1fr;
             align-items: start;
+            gap: 2.5rem;
+            padding: 2.5rem;
+        }
+
+        h1 {
+            font-size: 3.65rem;
         }
 
         .price-tool {
@@ -903,29 +811,27 @@
 
         .booking {
             grid-template-columns: 1fr;
+            gap: 2.5rem;
+            padding: 3rem;
         }
 
         .checkout-tool {
             width: 100%;
+            box-sizing: border-box;
         }
     }
 
     @media (max-width: 720px) {
-        .section-head {
-            align-items: start;
-            flex-direction: column;
-            gap: 1rem;
+        .services-page {
+            gap: 4rem;
         }
 
-        .demo-row,
-        .demo-row-reverse {
-            grid-template-columns: 1fr;
+        h1 {
+            font-size: 2.75rem;
         }
 
-        .demo-row-reverse h3,
-        .demo-row-reverse :global(> :not(h3)) {
-            grid-column: auto;
-            grid-row: auto;
+        h2 {
+            font-size: 2.35rem;
         }
 
         .process ol {
@@ -933,7 +839,7 @@
         }
 
         .process li {
-            min-height: 150px;
+            min-height: 130px;
             border-inline-end: 0;
             border-bottom: 1px solid var(--border);
         }
@@ -944,22 +850,26 @@
 
         .questions {
             grid-template-columns: 1fr;
+            gap: 1.6rem;
+        }
+
+        .answer,
+        .question-note {
+            grid-column: auto;
         }
 
         .answer {
-            grid-column: auto;
             margin-top: 0;
         }
 
         .question-note {
-            grid-column: auto;
             margin-top: -1rem;
         }
     }
 
     @media (max-width: 520px) {
         .services-page {
-            gap: 3rem;
+            gap: 3.5rem;
         }
 
         .hero,
@@ -969,16 +879,40 @@
         }
 
         .hero {
-            gap: 1.25rem;
+            gap: 1.5rem;
             padding: 1.25rem;
+        }
+
+        .brand-mark {
+            margin-bottom: 1rem;
+            font-size: 1.25rem;
+        }
+
+        h1 {
+            font-size: 2.35rem;
+        }
+
+        .hero-intro {
+            margin-top: 1rem;
+            font-size: 1rem;
         }
 
         .hero-actions {
             margin-top: 1.5rem;
         }
 
+        .hero-actions,
+        .action {
+            width: 100%;
+            box-sizing: border-box;
+        }
+
         .price-tool {
             padding: 1rem 1.2rem;
+        }
+
+        .price-line strong {
+            font-size: 2.8rem;
         }
 
         .price-tool > p {
@@ -994,9 +928,20 @@
             padding-top: 0.75rem;
         }
 
-        .hero-actions,
-        .action {
-            width: 100%;
+        .booking {
+            padding: 1.5rem 1.25rem;
+        }
+
+        .package-flow {
+            gap: 0.5rem;
+        }
+
+        .package-flow strong {
+            font-size: 0.72rem;
+        }
+
+        .checkout-tool {
+            padding: 1.2rem;
         }
 
         .questions form {

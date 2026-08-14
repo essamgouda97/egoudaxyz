@@ -1,383 +1,742 @@
 <script lang="ts">
-    import { Check, Play, RotateCcw } from "@lucide/svelte";
+    import {
+        Check,
+        Download,
+        Lightbulb,
+        Pause,
+        Play,
+        Search,
+        Tv,
+        Volume2,
+    } from "@lucide/svelte";
 
-    type RunState = "idle" | "running" | "ready";
-    type StepState = "waiting" | "done" | "running" | "queued" | "ready";
+    type Room = "living" | "bedroom" | "office";
+    type MediaId = "cairo" | "train" | "kitchen" | "river";
+    type Media = {
+        id: MediaId;
+        year: number;
+        duration: string;
+        ready: boolean;
+        color: string;
+        accent: string;
+    };
 
     let { language = "en" }: { language?: "en" | "ar" } = $props();
-    let runState = $state<RunState>("idle");
+    let query = $state("");
+    let selectedId = $state<MediaId>("cairo");
+    let room = $state<Room>("living");
+    let lights = $state(true);
+    let volume = $state(42);
+    let playing = $state(false);
+    let catalog = $state<Media[]>([
+        {
+            id: "cairo",
+            year: 2026,
+            duration: "1h 48m",
+            ready: true,
+            color: "#f5bf42",
+            accent: "#d94331",
+        },
+        {
+            id: "train",
+            year: 2024,
+            duration: "2h 03m",
+            ready: true,
+            color: "#87b9d7",
+            accent: "#18344c",
+        },
+        {
+            id: "kitchen",
+            year: 2025,
+            duration: "8 × 24m",
+            ready: false,
+            color: "#e48ab1",
+            accent: "#42233a",
+        },
+        {
+            id: "river",
+            year: 2023,
+            duration: "1h 36m",
+            ready: false,
+            color: "#86bc91",
+            accent: "#174b3b",
+        },
+    ]);
 
     const copyByLanguage = {
         en: {
-            title: "House brain",
-            state: "mock network",
-            reset: "Reset",
-            run: "Run movie night",
-            finish: "Finish run",
-            servicesLabel: "Mock home server services",
-            requestTime: "Friday · 8:00 PM",
-            request: "Family movie night",
-            steps: ["Check local library", "Pick room + lights", "Queue on TV"],
-            status: { waiting: "Waiting", done: "Done", running: "Running", queued: "Queued", ready: "Ready" },
-            ready: "Living room ready",
+            title: "Home control",
+            search: "Search library",
+            rooms: {
+                living: "Living room",
+                bedroom: "Bedroom",
+                office: "Office",
+            },
+            lights: "Lights",
+            volume: "Volume",
+            play: "Play",
+            pause: "Pause",
+            playing: "Now playing",
+            library: "Library",
+            empty: "No results",
+            get: "Add",
+            ready: "Ready",
+            added: "Added",
+            titles: {
+                cairo: "Cairo 2050",
+                train: "Last Train",
+                kitchen: "Space Kitchen",
+                river: "River House",
+            },
         },
         ar: {
-            title: "مخ البيت",
-            state: "شبكة خيالية",
-            reset: "ريست",
-            run: "شغّل ليلة الفيلم",
-            finish: "كمّل التشغيل",
-            servicesLabel: "خدمات home server خيالية",
-            requestTime: "الجمعة · 8:00 بالليل",
-            request: "ليلة فيلم للعيلة",
-            steps: [
-                "دوّر في المكتبة",
-                "اختار الأوضة والنور",
-                "جهّز الفيلم على التلفزيون",
-            ],
-            status: {
-                waiting: "مستني",
-                done: "خلص",
-                running: "شغّال",
-                queued: "في الدور",
-                ready: "جاهز",
+            title: "تحكم البيت",
+            search: "دور في المكتبة",
+            rooms: {
+                living: "الصالة",
+                bedroom: "أوضة النوم",
+                office: "المكتب",
             },
-            ready: "الصالة جاهزة",
+            lights: "النور",
+            volume: "الصوت",
+            play: "تشغيل",
+            pause: "وقف",
+            playing: "شغال دلوقتي",
+            library: "المكتبة",
+            empty: "مفيش نتائج",
+            get: "نزّل",
+            ready: "جاهز",
+            added: "اتضاف",
+            titles: {
+                cairo: "القاهرة 2050",
+                train: "آخر قطر",
+                kitchen: "مطبخ الفضاء",
+                river: "بيت النهر",
+            },
         },
     } as const;
 
+    const roomKeys = ["living", "bedroom", "office"] as const;
     const copy = $derived(copyByLanguage[language]);
-
-    const services = [
-        { name: "Jellyfin", detail: { en: "Library", ar: "المكتبة" }, color: "#9b87f5" },
-        { name: "Immich", detail: { en: "Photos", ar: "الصور" }, color: "#5db5ff" },
-        { name: "Paperless", detail: { en: "Documents", ar: "الورق" }, color: "#59c47c" },
-        { name: "Home Assistant", detail: { en: "House", ar: "البيت" }, color: "#ffb84d" },
-    ];
-
-    const steps = $derived<StepState[]>(
-        runState === "idle"
-            ? ["waiting", "waiting", "waiting"]
-            : runState === "running"
-              ? ["done", "running", "queued"]
-              : ["done", "done", "ready"],
+    const selected = $derived(
+        catalog.find((item) => item.id === selectedId) ?? catalog[0],
     );
+    const filteredCatalog = $derived.by(() => {
+        const needle = query.trim().toLocaleLowerCase();
+        if (!needle) return catalog;
 
-    function runMovieNight() {
-        if (runState === "ready") {
-            runState = "idle";
+        return catalog.filter((item) =>
+            copy.titles[item.id].toLocaleLowerCase().includes(needle),
+        );
+    });
+
+    function selectMedia(id: MediaId) {
+        selectedId = id;
+        playing = false;
+    }
+
+    function runSelected() {
+        if (!selected.ready) {
+            catalog = catalog.map((item) =>
+                item.id === selectedId ? { ...item, ready: true } : item,
+            );
             return;
         }
 
-        runState = runState === "idle" ? "running" : "ready";
+        playing = !playing;
     }
 </script>
 
-<div
-    class="server-demo"
-    data-demo="synthetic-home-server"
+<section
+    class="home-app"
+    data-app="home-control"
     lang={language}
     dir={language === "ar" ? "rtl" : "ltr"}
+    aria-label={copy.title}
 >
-    <div class="server-head">
-        <div>
-            <span class="server-title">{copy.title}</span>
-            <span class="local-only">{copy.state}</span>
+    <header>
+        <div class="app-title">
+            <Tv size={18} />
+            <h3>{copy.title}</h3>
         </div>
-        <button type="button" onclick={runMovieNight}>
-            {#if runState === "ready"}
-                <RotateCcw size={16} /> {copy.reset}
-            {:else}
-                <Play size={16} /> {runState === "idle" ? copy.run : copy.finish}
-            {/if}
-        </button>
-    </div>
+        <label class="search-box">
+            <span class="sr-only">{copy.search}</span>
+            <Search size={16} />
+            <input
+                data-testid="media-search"
+                type="search"
+                bind:value={query}
+                placeholder={copy.search}
+            />
+        </label>
+    </header>
 
-    <div class="service-strip" aria-label={copy.servicesLabel}>
-        {#each services as service}
-            <div class="service">
-                <span style={`--service-color: ${service.color}`}></span>
+    <div class="home-body">
+        <div class="library">
+            <p class="eyebrow">{copy.library}</p>
+            <div class="catalog" aria-live="polite">
+                {#each filteredCatalog as item (item.id)}
+                    <button
+                        type="button"
+                        class="media-card"
+                        class:selected={selectedId === item.id}
+                        aria-pressed={selectedId === item.id}
+                        onclick={() => selectMedia(item.id)}
+                    >
+                        <span
+                            class="poster"
+                            style:--cover={item.color}
+                            style:--accent={item.accent}
+                            aria-hidden="true"
+                        >
+                            <i></i>
+                            <b>{String(item.year).slice(2)}</b>
+                        </span>
+                        <span class="media-copy">
+                            <strong>{copy.titles[item.id]}</strong>
+                            <small dir="ltr">{item.year} · {item.duration}</small>
+                        </span>
+                        {#if item.ready}
+                            <span class="ready-mark" title={copy.ready}>
+                                <Check size={13} />
+                            </span>
+                        {/if}
+                    </button>
+                {:else}
+                    <div class="empty">{copy.empty}</div>
+                {/each}
+            </div>
+        </div>
+
+        <div
+            class="controller"
+            style:--cover={selected.color}
+            style:--accent={selected.accent}
+        >
+            <div class="now-playing">
+                <span class="large-poster" aria-hidden="true">
+                    <i></i>
+                    <b>{String(selected.year).slice(2)}</b>
+                </span>
                 <div>
-                    <strong>{service.name}</strong>
-                    <small>{service.detail[language]}</small>
+                    <small>{copy.playing}</small>
+                    <strong>{copy.titles[selected.id]}</strong>
+                    <span dir="ltr">{selected.duration}</span>
                 </div>
+                <i class:live={playing} aria-hidden="true"></i>
             </div>
-        {/each}
-    </div>
 
-    <div class="run-panel" aria-live="polite">
-        <div class="request">
-            <span>{copy.requestTime}</span>
-            <strong>{copy.request}</strong>
-        </div>
-        <div class="pipeline">
-            <div class:complete={steps[0] === "done"}>
-                <span>{steps[0] === "done" ? "✓" : "1"}</span>
-                <p>{copy.steps[0]}</p>
-                <small>{copy.status[steps[0]]}</small>
+            <div class="room-picker" aria-label={copy.title}>
+                {#each roomKeys as roomKey}
+                    <button
+                        type="button"
+                        class:active={room === roomKey}
+                        aria-pressed={room === roomKey}
+                        onclick={() => (room = roomKey)}
+                    >
+                        {copy.rooms[roomKey]}
+                    </button>
+                {/each}
             </div>
-            <div class:complete={steps[1] === "done"} class:running={steps[1] === "running"}>
-                <span>{steps[1] === "done" ? "✓" : "2"}</span>
-                <p>{copy.steps[1]}</p>
-                <small>{copy.status[steps[1]]}</small>
+
+            <div class="device-row">
+                <button
+                    data-testid="lights-toggle"
+                    type="button"
+                    class="light-toggle"
+                    class:active={lights}
+                    aria-pressed={lights}
+                    onclick={() => (lights = !lights)}
+                >
+                    <Lightbulb size={18} />
+                    <span>{copy.lights}</span>
+                    <i></i>
+                </button>
+
+                <label class="volume-control">
+                    <span><Volume2 size={17} /> {copy.volume}</span>
+                    <input
+                        data-testid="volume-slider"
+                        type="range"
+                        min="0"
+                        max="100"
+                        bind:value={volume}
+                    />
+                    <b dir="ltr">{volume}%</b>
+                </label>
             </div>
-            <div class:complete={steps[2] === "ready"}>
-                <span>{steps[2] === "ready" ? "✓" : "3"}</span>
-                <p>{copy.steps[2]}</p>
-                <small>{copy.status[steps[2]]}</small>
-            </div>
-        </div>
-        <div class="ready-line" class:visible={runState === "ready"}>
-            <Check size={16} /> {copy.ready}
+
+            <button
+                data-testid="media-action"
+                type="button"
+                class="play-button"
+                onclick={runSelected}
+            >
+                {#if !selected.ready}
+                    <Download size={18} /> {copy.get}
+                {:else if playing}
+                    <Pause size={18} /> {copy.pause}
+                {:else}
+                    <Play size={18} fill="currentColor" /> {copy.play}
+                {/if}
+            </button>
         </div>
     </div>
-</div>
+</section>
 
 <style>
-    .server-demo {
-        min-height: 390px;
+    .home-app {
+        min-height: 500px;
         overflow: hidden;
         border-radius: 8px;
-        background: #eaf6ff;
+        background: #e9f3f7;
         color: #102436;
         box-shadow: 0 6px 0 color-mix(in oklab, #102436 22%, transparent);
     }
 
-    .server-head {
+    header {
         display: flex;
+        min-height: 64px;
         align-items: center;
         justify-content: space-between;
         gap: 1rem;
-        padding: 1rem 1.1rem;
-        border-bottom: 1px solid #bdd8ea;
+        border-bottom: 1px solid #bdd2dc;
+        padding: 0.75rem 1rem;
     }
 
-    .server-head > div {
-        display: flex;
-        align-items: baseline;
-        gap: 0.65rem;
+    .app-title {
+        display: inline-flex;
+        flex: none;
+        align-items: center;
+        gap: 0.55rem;
     }
 
-    .server-title {
-        font-weight: 700;
+    h3 {
+        margin: 0;
+        font-size: 0.95rem;
     }
 
-    .local-only {
-        color: #4e6d82;
-        font-size: 0.72rem;
+    button,
+    input {
+        font: inherit;
     }
 
     button {
-        display: inline-flex;
-        min-height: 42px;
-        align-items: center;
-        gap: 0.45rem;
-        border: 0;
-        border-radius: 6px;
-        background: #102436;
-        padding: 0.65rem 0.8rem;
-        color: #f8fcff;
-        font: inherit;
-        font-size: 0.8rem;
-        font-weight: 700;
         cursor: pointer;
     }
 
-    button:hover,
-    button:focus-visible {
-        background: #25465f;
-    }
-
-    button:focus-visible {
+    button:focus-visible,
+    input:focus-visible {
         outline: 3px solid #ff6b35;
         outline-offset: 2px;
     }
 
-    .service-strip {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        border-bottom: 1px solid #bdd8ea;
-    }
-
-    .service {
+    .search-box {
         display: flex;
-        min-width: 0;
+        width: min(300px, 55%);
+        min-height: 40px;
         align-items: center;
-        gap: 0.55rem;
-        padding: 0.9rem 0.75rem;
-        border-right: 1px solid #bdd8ea;
+        gap: 0.5rem;
+        border: 1px solid #abc5d1;
+        border-radius: 6px;
+        background: #f8fcfd;
+        padding: 0 0.7rem;
+        color: #4d6a77;
     }
 
-    .service:last-child {
-        border-right: 0;
+    .search-box input {
+        width: 100%;
+        min-width: 0;
+        border: 0;
+        outline: 0;
+        background: transparent;
+        color: #102436;
+        font-size: 0.78rem;
     }
 
-    .service > span {
-        width: 9px;
-        height: 9px;
+    .search-box input::placeholder {
+        color: #64808c;
+        opacity: 1;
+    }
+
+    .home-body {
+        display: grid;
+        min-height: 436px;
+        grid-template-columns: minmax(280px, 0.9fr) minmax(340px, 1.1fr);
+    }
+
+    .library {
+        padding: 1rem;
+        border-inline-end: 1px solid #bdd2dc;
+    }
+
+    .eyebrow {
+        margin: 0 0 0.7rem;
+        color: #587681;
+        font-size: 0.68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .catalog {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.65rem;
+    }
+
+    .media-card {
+        position: relative;
+        display: grid;
+        min-width: 0;
+        grid-template-columns: 48px minmax(0, 1fr);
+        align-items: center;
+        gap: 0.65rem;
+        border: 1px solid #c4d6dd;
+        border-radius: 6px;
+        background: #f8fcfd;
+        padding: 0.55rem;
+        color: #102436;
+        text-align: start;
+    }
+
+    .media-card:hover,
+    .media-card.selected {
+        border-color: #102436;
+        box-shadow: 0 3px 0 #102436;
+        transform: translateY(-1px);
+    }
+
+    .poster,
+    .large-poster {
+        position: relative;
+        display: block;
+        overflow: hidden;
         flex: none;
-        border-radius: 50%;
-        background: var(--service-color);
-        box-shadow: 0 0 0 3px color-mix(in srgb, var(--service-color) 25%, transparent);
+        border-radius: 4px;
+        background: var(--cover);
     }
 
-    .service div {
+    .poster {
+        width: 48px;
+        aspect-ratio: 2 / 3;
+    }
+
+    .poster i,
+    .large-poster i {
+        position: absolute;
+        right: -18%;
+        bottom: -5%;
+        width: 78%;
+        aspect-ratio: 1;
+        border-radius: 50%;
+        background: var(--accent);
+    }
+
+    .poster b,
+    .large-poster b {
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        color: var(--accent);
+        font-size: 0.62rem;
+    }
+
+    .media-copy {
         min-width: 0;
     }
 
-    .service strong,
-    .service small {
+    .media-copy strong,
+    .media-copy small {
         display: block;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
     }
 
-    .service strong {
-        font-size: 0.74rem;
+    .media-copy strong {
+        font-size: 0.76rem;
     }
 
-    .service small {
-        margin-top: 0.1rem;
-        color: #527087;
-        font-size: 0.65rem;
+    .media-copy small {
+        margin-top: 0.25rem;
+        color: #607986;
+        font-size: 0.62rem;
     }
 
-    .run-panel {
+    .ready-mark {
+        position: absolute;
+        top: 0.35rem;
+        right: 0.35rem;
         display: grid;
-        grid-template-columns: minmax(130px, 0.65fr) minmax(260px, 1.35fr);
-        gap: clamp(1.2rem, 4vw, 2.7rem);
-        padding: clamp(1.3rem, 4vw, 2.3rem);
+        width: 20px;
+        height: 20px;
+        place-items: center;
+        border-radius: 50%;
+        background: #dff3e4;
+        color: #26673b;
     }
 
-    .request {
-        align-self: center;
+    [dir="rtl"] .ready-mark {
+        right: auto;
+        left: 0.35rem;
     }
 
-    .request span,
-    .request strong {
+    .empty {
+        display: grid;
+        min-height: 180px;
+        grid-column: 1 / -1;
+        place-items: center;
+        border: 1px dashed #abc5d1;
+        color: #587681;
+        font-size: 0.8rem;
+    }
+
+    .controller {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        justify-content: center;
+        gap: 1rem;
+        padding: clamp(1.2rem, 4vw, 2.25rem);
+        background: #f8fcfd;
+    }
+
+    .now-playing {
+        display: grid;
+        grid-template-columns: 76px minmax(0, 1fr) 10px;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .large-poster {
+        width: 76px;
+        aspect-ratio: 2 / 3;
+        box-shadow: 0 5px 0 color-mix(in oklab, var(--accent) 30%, transparent);
+    }
+
+    .large-poster b {
+        font-size: 0.75rem;
+    }
+
+    .now-playing small,
+    .now-playing strong,
+    .now-playing span {
         display: block;
     }
 
-    .request span {
-        color: #527087;
-        font-size: 0.72rem;
+    .now-playing small {
+        color: #607986;
+        font-size: 0.66rem;
     }
 
-    .request strong {
+    .now-playing strong {
+        margin-top: 0.2rem;
+        font-size: 1.35rem;
+        line-height: 1.1;
+    }
+
+    .now-playing span {
         margin-top: 0.35rem;
-        font-size: clamp(1.35rem, 4vw, 2.2rem);
-        line-height: 1.05;
-        letter-spacing: 0;
+        color: #607986;
+        font-size: 0.68rem;
     }
 
-    .pipeline {
-        display: flex;
-        flex-direction: column;
-        gap: 0.55rem;
-    }
-
-    .pipeline > div {
-        display: grid;
-        grid-template-columns: 28px 1fr auto;
-        align-items: center;
-        gap: 0.65rem;
-        min-height: 48px;
-        padding: 0.5rem 0.65rem;
-        border: 1px solid #bdd8ea;
-        border-radius: 6px;
-        background: #f8fcff;
-        transition: border-color 180ms ease-out, background 180ms ease-out;
-    }
-
-    .pipeline > div.complete {
-        border-color: #55a975;
-        background: #e7f8ed;
-    }
-
-    .pipeline > div.running {
-        border-color: #ff9c63;
-        background: #fff1e8;
-    }
-
-    .pipeline span {
-        display: grid;
-        width: 26px;
-        height: 26px;
-        place-items: center;
+    .now-playing > i {
+        width: 8px;
+        height: 8px;
         border-radius: 50%;
-        background: #dbeaf4;
+        background: #b6c6cc;
+    }
+
+    .now-playing > i.live {
+        background: #ff6b35;
+        box-shadow: 0 0 0 5px #ffe1d6;
+    }
+
+    .room-picker {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 2px;
+        border: 1px solid #abc5d1;
+        border-radius: 6px;
+        background: #abc5d1;
+        overflow: hidden;
+    }
+
+    .room-picker button {
+        min-height: 40px;
+        border: 0;
+        background: #eef6f8;
+        color: #4d6976;
         font-size: 0.7rem;
         font-weight: 700;
     }
 
-    .pipeline p,
-    .pipeline small {
-        margin: 0;
+    .room-picker button.active {
+        background: #102436;
+        color: #f8fcfd;
     }
 
-    .pipeline p {
-        font-size: 0.76rem;
-        font-weight: 700;
+    .device-row {
+        display: grid;
+        grid-template-columns: minmax(110px, 0.65fr) minmax(160px, 1.35fr);
+        gap: 0.7rem;
     }
 
-    .pipeline small {
-        color: #527087;
+    .light-toggle,
+    .volume-control {
+        min-height: 58px;
+        border: 1px solid #c4d6dd;
+        border-radius: 6px;
+        background: #eef6f8;
+    }
+
+    .light-toggle {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0 0.7rem;
+        color: #4d6976;
+        text-align: start;
+    }
+
+    .light-toggle i {
+        width: 28px;
+        height: 16px;
+        border-radius: 8px;
+        background: #a8bdc6;
+    }
+
+    .light-toggle i::after {
+        display: block;
+        width: 12px;
+        height: 12px;
+        margin: 2px;
+        border-radius: 50%;
+        background: #f8fcfd;
+        content: "";
+        transition: transform 120ms ease-out;
+    }
+
+    .light-toggle.active {
+        color: #7b5300;
+    }
+
+    .light-toggle.active i {
+        background: #f0b630;
+    }
+
+    .light-toggle.active i::after {
+        transform: translateX(12px);
+    }
+
+    [dir="rtl"] .light-toggle.active i::after {
+        transform: translateX(-12px);
+    }
+
+    .volume-control {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        align-items: center;
+        gap: 0.65rem;
+        padding: 0 0.75rem;
+        color: #4d6976;
         font-size: 0.68rem;
     }
 
-    .ready-line {
-        grid-column: 1 / -1;
+    .volume-control > span {
         display: inline-flex;
         align-items: center;
-        gap: 0.4rem;
-        color: #1e6a3d;
-        font-size: 0.78rem;
+        gap: 0.35rem;
+    }
+
+    .volume-control input {
+        min-width: 55px;
+        accent-color: #ff6b35;
+    }
+
+    .volume-control b {
+        color: #102436;
+        font-size: 0.68rem;
+    }
+
+    .play-button {
+        display: inline-flex;
+        min-height: 48px;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        border: 0;
+        border-radius: 6px;
+        background: #ff6b35;
+        color: #102436;
         font-weight: 700;
-        opacity: 0;
-        transition: opacity 180ms ease-out;
     }
 
-    .ready-line.visible {
-        opacity: 1;
+    .play-button:hover {
+        background: #ff8257;
     }
 
-    @media (max-width: 700px) {
-        .service-strip {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
+    .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        clip-path: inset(50%);
+    }
 
-        .service:nth-child(2) {
-            border-right: 0;
-        }
-
-        .service:nth-child(-n + 2) {
-            border-bottom: 1px solid #bdd8ea;
-        }
-
-        .run-panel {
+    @media (max-width: 760px) {
+        .home-body {
             grid-template-columns: 1fr;
         }
 
-        .ready-line {
-            grid-column: auto;
+        .library {
+            border-inline-end: 0;
+            border-bottom: 1px solid #bdd2dc;
         }
     }
 
     @media (max-width: 480px) {
-        .server-head {
-            align-items: flex-start;
+        header {
+            align-items: stretch;
+            flex-direction: column;
         }
 
-        .server-head > div {
-            flex-direction: column;
-            gap: 0.15rem;
+        .search-box {
+            width: 100%;
+        }
+
+        .catalog {
+            grid-template-columns: 1fr;
+        }
+
+        .controller {
+            padding: 1rem;
+        }
+
+        .device-row {
+            grid-template-columns: 1fr;
+        }
+
+        .now-playing {
+            grid-template-columns: 64px minmax(0, 1fr) 8px;
+        }
+
+        .large-poster {
+            width: 64px;
+        }
+
+        .room-picker button {
+            padding-inline: 0.3rem;
+            font-size: 0.64rem;
         }
     }
 
     @media (prefers-reduced-motion: reduce) {
-        .pipeline > div,
-        .ready-line {
+        .light-toggle i::after {
             transition: none;
         }
     }

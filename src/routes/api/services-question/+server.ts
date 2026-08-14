@@ -56,7 +56,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
     const { question, language } = parsedInput.data;
     const offlineMessage =
         language === "ar"
-            ? "الأسئلة واقفة دلوقتي. ابعت لـ egouda@bokralabs.com."
+            ? "الأسئلة واقفة دلوقتي. ابعت إيميل لـ egouda@bokralabs.com."
             : "Questions are offline. Email egouda@bokralabs.com.";
 
     const rateLimit = checkRateLimit({
@@ -69,7 +69,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
             {
                 message:
                     language === "ar"
-                        ? "أسئلة كتير دلوقتي. ابعت لـ egouda@bokralabs.com."
+                        ? "أسئلة كتير أوي. ابعت إيميل لـ egouda@bokralabs.com بدل كده."
                         : "Too many questions. Email egouda@bokralabs.com instead.",
             },
             {
@@ -83,10 +83,10 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
         return json({
             answer:
                 language === "ar"
-                    ? "الباكدج هي workflow واحدة مخصصة، مكالمة متطلبات، " +
-                      "أسبوع شغل، ومكالمة setup ومراجعة ساعتين."
-                    : "The package covers one custom workflow, a requirements " +
-                      "call, one build week, and a two-hour setup and review call.",
+                    ? "Workflow واحدة: مكالمة الحد، ٦ أيام بناء، " +
+                      "وساعتين تركيب وتسليم الحد اللي بعده."
+                    : "One workflow: Sunday scope call, six build days, " +
+                      "then a two-hour Sunday setup and handoff.",
         });
     }
 
@@ -111,7 +111,7 @@ Offer facts:
 
 Rules:
 - Reply in ${language === "ar" ? "natural Egyptian Arabic" : "plain English"}.
-- Maximum 55 words. No greeting, pitch, headings, or Markdown.
+- Maximum 35 words. No greeting, pitch, headings, or Markdown.
 - Answer only from the facts above.
 - Do not promise integrations, timelines, refunds, legal terms, availability, or scope not stated here.
 - When the answer depends on Essam, say to email egouda@bokralabs.com.`;
@@ -153,7 +153,7 @@ Rules:
             return json({ message: offlineMessage }, { status: 502 });
         }
 
-        return json({ answer: limitWords(answer, 55) });
+        return json({ answer: limitWords(answer, 35) });
     } catch (error) {
         console.error("[services-question]", providerErrorMessage(error, "DeepSeek"));
         return json({ message: offlineMessage }, { status: 502 });
