@@ -21,7 +21,7 @@
     ];
 
     const isBlogPost = $derived(page.url.pathname.startsWith("/blog/") && page.url.pathname !== "/blog/");
-    const isServicesPage = $derived(page.url.pathname === "/" || page.url.pathname === "/services");
+    const isServicesPage = $derived(page.url.pathname === "/services");
     const languageOptions: { value: ServicesLanguage; label: string }[] = [
         { value: "en", label: "EN" },
         { value: "ar", label: "عربي" },

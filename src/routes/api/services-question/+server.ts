@@ -1,3 +1,4 @@
+import { dev } from "$app/environment";
 import { env } from "$env/dynamic/private";
 import {
     fetchWithTimeout,
@@ -38,6 +39,10 @@ const deepSeekResponseSchema = z.object({
 });
 
 export const POST: RequestHandler = async ({ request, getClientAddress }) => {
+    if (!dev) {
+        return json({ message: "Not found." }, { status: 404 });
+    }
+
     let input: unknown;
     try {
         input = await request.json();

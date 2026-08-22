@@ -1,107 +1,151 @@
 <script lang="ts">
-    import { CalendarPlus, Check, FileText, ScanText } from "@lucide/svelte";
+    import { browser } from "$app/environment";
+    import { Badge } from "$lib/components/ui/badge";
+    import { Button } from "$lib/components/ui/button";
+    import {
+        CalendarPlus,
+        Check,
+        Copy,
+        FileText,
+        ScanText,
+    } from "@lucide/svelte";
 
     type ParsedDocument = {
-        dateIso: string | null;
-        dateLabel: string;
+        dateIso: string;
         changeLabel: string;
         actionLabel: string;
     };
+
+    const STORAGE_KEY = "egouda-tools-documents-v1";
 
     let { language = "en" }: { language?: "en" | "ar" } = $props();
 
     const copyByLanguage = {
         en: {
-            title: "Read a document",
-            paste: "Paste document text",
-            scan: "Read it",
-            renewal: "Renewal",
-            change: "Change",
+            title: "Documents",
+            source: "Document",
+            fileName: "untitled.txt",
+            placeholder: "Paste a letter, bill, or notice…",
+            extract: "Extract",
+            fields: "Extracted fields",
+            fieldCount: "3 fields",
+            renewal: "Renewal date",
+            change: "Monthly change",
             action: "Next step",
-            reminder: "Download reminder",
-            ready: "Reminder ready",
-            unknown: "Not found",
-            sampleDocument:
-                "Renewal notice\nYour home internet plan renews on October 18, 2026.\n" +
-                "The monthly price will increase by $75.\nCompare plans before renewal.",
-            compareRemind: "Compare + remind me",
+            reminder: "Add to calendar",
+            downloaded: "Downloaded",
+            copyJson: "Copy JSON",
+            copied: "Copied",
+            empty: "No fields yet",
+            compareRemind: "Compare plans before renewal",
             reminderTitle: "Review internet renewal",
         },
         ar: {
-            title: "اقرأ مستند",
-            paste: "حط نص المستند",
-            scan: "اقرأه",
-            renewal: "تجديد",
-            change: "تغيير",
+            title: "المستندات",
+            source: "المستند",
+            fileName: "مستند.txt",
+            placeholder: "انسخ خطاب أو فاتورة أو إشعار…",
+            extract: "استخراج",
+            fields: "البيانات المستخرجة",
+            fieldCount: "3 حقول",
+            renewal: "تاريخ التجديد",
+            change: "الزيادة الشهرية",
             action: "الخطوة الجاية",
-            reminder: "نزّل التذكير",
-            ready: "التذكير جاهز",
-            unknown: "مش موجود",
-            sampleDocument:
-                "إشعار تجديد\nباقة النت في البيت هتتجدد يوم 18 أكتوبر 2026.\n" +
-                "السعر الشهري هيزيد 75$.\nشوف البدائل قبل التجديد.",
-            compareRemind: "قارن + فكّرني",
+            reminder: "تذكير بالتقويم",
+            downloaded: "اتنزل",
+            copyJson: "نسخ JSON",
+            copied: "اتنسخ",
+            empty: "لسه مفيش بيانات",
+            compareRemind: "شوف البدائل قبل التجديد",
             reminderTitle: "راجع تجديد باقة النت",
         },
     } as const;
 
-    function readInitialLanguage() {
-        return language;
-    }
-
-    const initialLanguage = readInitialLanguage();
     const copy = $derived(copyByLanguage[language]);
-    let documentText = $state(copyByLanguage[initialLanguage].sampleDocument);
-    let parsed = $state<ParsedDocument | null>(
-        parseDocument(
-            copyByLanguage[initialLanguage].sampleDocument,
-            initialLanguage,
-        ),
-    );
+    let documentText = $state("");
+    let parsed = $state<ParsedDocument | null>(null);
+    let storageReady = $state(false);
     let downloaded = $state(false);
-    let previousLanguage = $state(initialLanguage);
+    let copied = $state(false);
+    let feedbackTimer: number | undefined;
 
     $effect(() => {
-        if (language === previousLanguage) return;
+        if (!browser || storageReady) return;
 
-        documentText = copy.sampleDocument;
-        parsed = parseDocument(documentText, language);
-        downloaded = false;
-        previousLanguage = language;
+        try {
+            const saved = JSON.parse(
+                localStorage.getItem(STORAGE_KEY) ?? "{}",
+            );
+            if (typeof saved.documentText === "string") {
+                documentText = saved.documentText;
+            }
+            if (isParsedDocument(saved.parsed)) {
+                parsed = saved.parsed;
+            }
+        } catch {
+            documentText = "";
+            parsed = null;
+        }
+
+        storageReady = true;
     });
+
+    $effect(() => {
+        const snapshot = JSON.stringify({ documentText, parsed });
+        if (!browser || !storageReady) return;
+        localStorage.setItem(STORAGE_KEY, snapshot);
+    });
+
+    function isParsedDocument(value: unknown): value is ParsedDocument {
+        if (!value || typeof value !== "object") return false;
+        const candidate = value as Partial<ParsedDocument>;
+
+        return (
+            typeof candidate.dateIso === "string" &&
+            typeof candidate.changeLabel === "string" &&
+            typeof candidate.actionLabel === "string"
+        );
+    }
 
     function scanDocument() {
         parsed = parseDocument(documentText, language);
         downloaded = false;
+        copied = false;
     }
 
     function editDocument(event: Event) {
         documentText = (event.currentTarget as HTMLTextAreaElement).value;
         parsed = null;
         downloaded = false;
+        copied = false;
     }
 
-    function parseDocument(text: string, activeLanguage: "en" | "ar"): ParsedDocument {
+    function updateField(field: keyof ParsedDocument, value: string) {
+        if (!parsed) return;
+        parsed = { ...parsed, [field]: value };
+        downloaded = false;
+        copied = false;
+    }
+
+    function parseDocument(
+        text: string,
+        activeLanguage: "en" | "ar",
+    ): ParsedDocument {
         const normalized = normalizeDigits(text);
-        const dateIso = extractDate(normalized);
+        const dateIso = extractDate(normalized) ?? "";
         const amount = extractAmount(normalized);
         const activeCopy = copyByLanguage[activeLanguage];
 
         return {
             dateIso,
-            dateLabel: dateIso
-                ? formatDate(dateIso, activeLanguage)
-                : activeCopy.unknown,
             changeLabel:
                 amount === null
-                    ? activeCopy.unknown
+                    ? ""
                     : activeLanguage === "ar"
-                      ? "+" + amount.toLocaleString("en-CA") + "$ في الشهر"
+                      ? "+" + amount.toLocaleString("en-CA") + "$ شهرياً"
                       : "+$" + amount.toLocaleString("en-CA") + " / month",
             actionLabel:
-                dateIso || amount !== null
-                    ? activeCopy.compareRemind
-                    : activeCopy.unknown,
+                dateIso || amount !== null ? activeCopy.compareRemind : "",
         };
     }
 
@@ -110,13 +154,19 @@
         const persianDigits = "۰۱۲۳۴۵۶۷۸۹";
 
         return value
-            .replace(/[٠-٩]/g, (digit) => String(arabicDigits.indexOf(digit)))
-            .replace(/[۰-۹]/g, (digit) => String(persianDigits.indexOf(digit)));
+            .replace(/[٠-٩]/g, (digit) =>
+                String(arabicDigits.indexOf(digit)),
+            )
+            .replace(/[۰-۹]/g, (digit) =>
+                String(persianDigits.indexOf(digit)),
+            );
     }
 
     function extractDate(value: string) {
         const isoMatch = value.match(/\b(20\d{2})-(\d{1,2})-(\d{1,2})\b/);
-        if (isoMatch) return toIsoDate(+isoMatch[1], +isoMatch[2], +isoMatch[3]);
+        if (isoMatch) {
+            return toIsoDate(+isoMatch[1], +isoMatch[2], +isoMatch[3]);
+        }
 
         const months: Record<string, number> = {
             january: 1,
@@ -149,7 +199,12 @@
         };
         const monthNames = Object.keys(months).join("|");
         const monthFirst = value.match(
-            new RegExp("(" + monthNames + ")\\s+(\\d{1,2})(?:,)?\\s+(20\\d{2})", "i"),
+            new RegExp(
+                "(" +
+                    monthNames +
+                    ")\\s+(\\d{1,2})(?:,)?\\s+(20\\d{2})",
+                "i",
+            ),
         );
         if (monthFirst) {
             return toIsoDate(
@@ -160,7 +215,10 @@
         }
 
         const dayFirst = value.match(
-            new RegExp("(\\d{1,2})\\s+(" + monthNames + ")\\s+(20\\d{2})", "i"),
+            new RegExp(
+                "(\\d{1,2})\\s+(" + monthNames + ")\\s+(20\\d{2})",
+                "i",
+            ),
         );
         if (!dayFirst) return null;
 
@@ -184,6 +242,15 @@
             return null;
         }
 
+        const candidate = new Date(Date.UTC(year, month - 1, day));
+        if (
+            candidate.getUTCFullYear() !== year ||
+            candidate.getUTCMonth() !== month - 1 ||
+            candidate.getUTCDate() !== day
+        ) {
+            return null;
+        }
+
         return [
             String(year),
             String(month).padStart(2, "0"),
@@ -202,14 +269,40 @@
         return Number.isFinite(amount) ? amount : null;
     }
 
-    function formatDate(dateIso: string, activeLanguage: "en" | "ar") {
-        const [year, month, day] = dateIso.split("-").map(Number);
-        return new Intl.DateTimeFormat(activeLanguage === "ar" ? "ar-EG" : "en-CA", {
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-            timeZone: "UTC",
-        }).format(new Date(Date.UTC(year, month - 1, day)));
+    function extractedJson() {
+        if (!parsed) return "";
+
+        return JSON.stringify(
+            {
+                renewalDate: parsed.dateIso || null,
+                monthlyChange: parsed.changeLabel || null,
+                nextStep: parsed.actionLabel || null,
+            },
+            null,
+            2,
+        );
+    }
+
+    async function copyExtractedJson() {
+        const value = extractedJson();
+        if (!value) return;
+
+        try {
+            await navigator.clipboard.writeText(value);
+        } catch {
+            const input = document.createElement("textarea");
+            input.value = value;
+            input.style.position = "fixed";
+            input.style.opacity = "0";
+            document.body.append(input);
+            input.select();
+            document.execCommand("copy");
+            input.remove();
+        }
+
+        copied = true;
+        window.clearTimeout(feedbackTimer);
+        feedbackTimer = window.setTimeout(() => (copied = false), 1600);
     }
 
     function downloadReminder() {
@@ -229,7 +322,9 @@
             "END:VCALENDAR",
         ].join("\r\n");
         const url = URL.createObjectURL(
-            new Blob([calendar], { type: "text/calendar;charset=utf-8" }),
+            new Blob([calendar], {
+                type: "text/calendar;charset=utf-8",
+            }),
         );
         const link = document.createElement("a");
         link.href = url;
@@ -243,309 +338,404 @@
 </script>
 
 <section
-    class="paper-app"
+    class="app-frame"
     data-app="document-reader"
     lang={language}
     dir={language === "ar" ? "rtl" : "ltr"}
     aria-label={copy.title}
 >
-    <header>
-        <div class="app-title">
-            <FileText size={18} />
+    <header class="app-header">
+        <div class="app-identity">
+            <span class="app-icon"><FileText size={18} /></span>
             <h3>{copy.title}</h3>
         </div>
-        <button
-            data-testid="paper-scan"
-            class="scan-button"
-            type="button"
-            disabled={!documentText.trim()}
-            onclick={scanDocument}
-        >
-            <ScanText size={17} /> {copy.scan}
-        </button>
-    </header>
 
-    <div class="paper-body">
-        <label class="document-input">
-            <span>{copy.paste}</span>
-            <textarea
-                data-testid="paper-text"
-                value={documentText}
-                rows="8"
-                spellcheck="false"
-                oninput={editDocument}
-            ></textarea>
-            <i aria-hidden="true"></i>
-        </label>
-
-        <div class="extraction" aria-live="polite">
-            <div class:ready={parsed}>
-                <span>{copy.renewal}</span>
-                <strong data-testid="extraction-date">
-                    {parsed?.dateLabel ?? "—"}
-                </strong>
-            </div>
-            <div class:ready={parsed}>
-                <span>{copy.change}</span>
-                <strong data-testid="extraction-change">
-                    {parsed?.changeLabel ?? "—"}
-                </strong>
-            </div>
-            <div class:ready={parsed}>
-                <span>{copy.action}</span>
-                <strong>{parsed?.actionLabel ?? "—"}</strong>
-            </div>
-
-            <button
+        <div class="header-actions">
+            <Button
+                data-testid="copy-json"
+                class="secondary-action"
+                variant="outline"
+                size="sm"
+                disabled={!parsed}
+                title={copy.copyJson}
+                onclick={copyExtractedJson}
+            >
+                {#if copied}<Check size={16} />{:else}<Copy size={16} />{/if}
+                <span>{copied ? copy.copied : copy.copyJson}</span>
+            </Button>
+            <Button
                 data-testid="reminder-download"
-                class="reminder-button"
-                type="button"
+                class="secondary-action"
+                variant="outline"
+                size="sm"
                 disabled={!parsed?.dateIso}
+                title={copy.reminder}
                 onclick={downloadReminder}
             >
                 {#if downloaded}
-                    <Check size={17} /> {copy.ready}
+                    <Check size={16} />
                 {:else}
-                    <CalendarPlus size={17} /> {copy.reminder}
+                    <CalendarPlus size={16} />
                 {/if}
-            </button>
+                <span>{downloaded ? copy.downloaded : copy.reminder}</span>
+            </Button>
+            <Button
+                data-testid="paper-scan"
+                class="primary-action"
+                size="sm"
+                disabled={!documentText.trim()}
+                title={copy.extract}
+                onclick={scanDocument}
+            >
+                <ScanText size={16} />
+                <span>{copy.extract}</span>
+            </Button>
         </div>
+    </header>
+
+    <div class="workspace">
+        <section class="document-pane" aria-labelledby="document-heading">
+            <div class="pane-header">
+                <div>
+                    <h4 id="document-heading">{copy.source}</h4>
+                    <span>{copy.fileName}</span>
+                </div>
+                <span class="character-count">{documentText.length}</span>
+            </div>
+            <textarea
+                data-testid="paper-text"
+                value={documentText}
+                spellcheck="false"
+                aria-label={copy.source}
+                placeholder={copy.placeholder}
+                oninput={editDocument}
+            ></textarea>
+        </section>
+
+        <section class="fields-pane" aria-labelledby="fields-heading">
+            <div class="pane-header">
+                <h4 id="fields-heading">{copy.fields}</h4>
+                {#if parsed}
+                    <Badge variant="secondary">{copy.fieldCount}</Badge>
+                {/if}
+            </div>
+
+            {#if parsed}
+                <div class="field-list" aria-live="polite">
+                    <label class="field-row">
+                        <span>{copy.renewal}</span>
+                        <input
+                            data-testid="extraction-date"
+                            type="date"
+                            value={parsed.dateIso}
+                            oninput={(event) =>
+                                updateField(
+                                    "dateIso",
+                                    (event.currentTarget as HTMLInputElement).value,
+                                )}
+                        />
+                    </label>
+                    <label class="field-row">
+                        <span>{copy.change}</span>
+                        <input
+                            data-testid="extraction-change"
+                            type="text"
+                            value={parsed.changeLabel}
+                            oninput={(event) =>
+                                updateField(
+                                    "changeLabel",
+                                    (event.currentTarget as HTMLInputElement).value,
+                                )}
+                        />
+                    </label>
+                    <label class="field-row action-field">
+                        <span>{copy.action}</span>
+                        <textarea
+                            rows="3"
+                            value={parsed.actionLabel}
+                            oninput={(event) =>
+                                updateField(
+                                    "actionLabel",
+                                    (event.currentTarget as HTMLTextAreaElement).value,
+                                )}
+                        ></textarea>
+                    </label>
+                </div>
+            {:else}
+                <div class="empty-state" aria-live="polite">
+                    <ScanText size={24} />
+                    <p>{copy.empty}</p>
+                </div>
+            {/if}
+        </section>
     </div>
 </section>
 
 <style>
-    .paper-app {
+    .app-frame {
         min-height: 460px;
         overflow: hidden;
+        border: 1px solid var(--border);
         border-radius: 8px;
-        background: #fff3d2;
-        color: #2f281d;
-        box-shadow: 0 6px 0 color-mix(in oklab, #2f281d 20%, transparent);
+        background: var(--card);
+        color: var(--foreground);
+        box-shadow: 0 1px 3px color-mix(in oklab, var(--foreground) 10%, transparent);
+        font-family: ui-sans-serif, system-ui, sans-serif;
     }
 
-    header {
+    .app-frame[dir="rtl"] {
+        font-family: "Cairo", ui-sans-serif, system-ui, sans-serif;
+    }
+
+    .app-header,
+    .app-identity,
+    .header-actions,
+    .pane-header,
+    .pane-header > div {
         display: flex;
-        min-height: 64px;
         align-items: center;
+    }
+
+    .app-header {
+        min-height: 64px;
         justify-content: space-between;
-        gap: 1rem;
-        border-bottom: 1px solid #d9c590;
+        gap: 0.75rem;
+        border-bottom: 1px solid var(--border);
         padding: 0.75rem 1rem;
     }
 
-    .app-title,
-    .scan-button,
-    .reminder-button {
-        display: inline-flex;
-        align-items: center;
+    .app-identity {
+        min-width: 0;
+        gap: 0.625rem;
     }
 
-    .app-title {
-        gap: 0.55rem;
+    .app-icon {
+        display: grid;
+        width: 34px;
+        height: 34px;
+        flex: 0 0 auto;
+        place-items: center;
+        border: 1px solid var(--border);
+        border-radius: 7px;
+        background: var(--muted);
+    }
+
+    h3,
+    h4,
+    p {
+        margin: 0;
     }
 
     h3 {
-        margin: 0;
-        font-size: 0.95rem;
+        overflow: hidden;
+        font-size: 0.925rem;
+        font-weight: 650;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
-    button,
-    textarea {
+    .header-actions {
+        justify-content: flex-end;
+        gap: 0.5rem;
+    }
+
+    .app-frame :global(.primary-action),
+    .app-frame :global(.secondary-action) {
+        min-height: 36px;
+        gap: 0.4rem;
+        white-space: nowrap;
+    }
+
+    .workspace {
+        display: grid;
+        min-height: 395px;
+        grid-template-columns: minmax(0, 1.05fr) minmax(300px, 0.95fr);
+    }
+
+    .document-pane,
+    .fields-pane {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+    }
+
+    .document-pane {
+        border-inline-end: 1px solid var(--border);
+    }
+
+    .pane-header {
+        min-height: 58px;
+        justify-content: space-between;
+        gap: 0.75rem;
+        border-bottom: 1px solid var(--border);
+        padding: 0.75rem 1rem;
+    }
+
+    .pane-header > div {
+        min-width: 0;
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 0.15rem;
+    }
+
+    h4 {
+        font-size: 0.78rem;
+        font-weight: 650;
+    }
+
+    .pane-header span,
+    .character-count {
+        overflow: hidden;
+        color: var(--muted-foreground);
+        font-size: 0.7rem;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .character-count {
+        font-variant-numeric: tabular-nums;
+    }
+
+    textarea,
+    input {
+        box-sizing: border-box;
+        border: 1px solid var(--input, var(--border));
+        border-radius: 6px;
+        background: var(--background);
+        color: var(--foreground);
         font: inherit;
     }
 
-    button {
-        cursor: pointer;
+    textarea:focus-visible,
+    input:focus-visible {
+        border-color: var(--ring);
+        outline: 2px solid color-mix(in oklab, var(--ring) 26%, transparent);
+        outline-offset: 1px;
     }
 
-    button:focus-visible,
-    textarea:focus-visible {
-        outline: 3px solid #ff6b35;
-        outline-offset: 2px;
-    }
-
-    .scan-button {
-        min-height: 40px;
-        gap: 0.45rem;
+    .document-pane > textarea {
+        width: calc(100% - 2rem);
+        min-height: 292px;
+        flex: 1;
+        resize: none;
         border: 0;
+        border-radius: 0;
+        margin: 1rem;
+        background: transparent;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.78rem;
+        line-height: 1.75;
+    }
+
+    .app-frame[dir="rtl"] .document-pane > textarea {
+        font-family: "Cairo", ui-sans-serif, system-ui, sans-serif;
+        line-height: 1.9;
+    }
+
+    .document-pane > textarea:focus-visible {
         border-radius: 6px;
-        background: #2f281d;
-        padding: 0.55rem 0.75rem;
-        color: #fffdf5;
-        font-size: 0.76rem;
-        font-weight: 700;
+        outline: 2px solid var(--ring);
+        outline-offset: 4px;
     }
 
-    .scan-button:hover:not(:disabled) {
-        background: #51452f;
-    }
-
-    button:disabled {
-        cursor: not-allowed;
-        opacity: 0.45;
-    }
-
-    .paper-body {
-        display: grid;
-        min-height: 396px;
-        grid-template-columns: minmax(310px, 1.15fr) minmax(280px, 0.85fr);
-    }
-
-    .document-input {
-        position: relative;
+    .field-list {
         display: flex;
-        min-width: 0;
+        flex: 1;
         flex-direction: column;
-        gap: 0.6rem;
-        border-inline-end: 1px solid #d9c590;
-        padding: clamp(1.2rem, 4vw, 2.25rem);
-    }
-
-    .document-input > span {
-        color: #75694f;
-        font-size: 0.68rem;
-        font-weight: 700;
-        text-transform: uppercase;
-    }
-
-    .document-input textarea {
-        position: relative;
-        z-index: 1;
-        width: 100%;
-        min-height: 270px;
-        box-sizing: border-box;
-        resize: vertical;
-        border: 1px solid #d6d0bf;
-        border-radius: 4px;
-        background:
-            linear-gradient(#fffef9 31px, #e9e3d4 32px) 0 0 / 100% 32px;
-        padding: 1.1rem 1.2rem;
-        color: #3d3528;
-        font-family: inherit;
-        font-size: 0.82rem;
-        line-height: 2rem;
-        box-shadow: 0 8px 0 #dccb9e;
-    }
-
-    .document-input i {
-        position: absolute;
-        right: 1.5rem;
-        bottom: 1.5rem;
-        width: 46px;
-        height: 46px;
-        border: 8px solid #ff6b35;
-        border-top-color: transparent;
-        border-left-color: transparent;
-        opacity: 0.25;
-        transform: rotate(8deg);
-    }
-
-    [dir="rtl"] .document-input i {
-        right: auto;
-        left: 1.5rem;
-        transform: rotate(82deg);
-    }
-
-    .extraction {
-        display: flex;
-        min-width: 0;
-        flex-direction: column;
-        justify-content: center;
-        gap: 0;
-        background: #2f281d;
-        padding: clamp(1.2rem, 4vw, 2.25rem);
-        color: #fffdf5;
-    }
-
-    .extraction > div {
-        display: grid;
-        min-height: 72px;
-        grid-template-columns: minmax(78px, 0.65fr) minmax(0, 1.35fr);
-        align-items: center;
         gap: 1rem;
-        border-bottom: 1px solid #5f543e;
+        padding: 1rem;
     }
 
-    .extraction > div:first-child {
-        border-top: 1px solid #5f543e;
+    .field-row {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
     }
 
-    .extraction span {
-        color: #cbbf9e;
-        font-size: 0.66rem;
-        font-weight: 700;
-        text-transform: uppercase;
+    .field-row > span {
+        color: var(--muted-foreground);
+        font-size: 0.7rem;
+        font-weight: 600;
     }
 
-    .extraction strong {
-        overflow-wrap: anywhere;
-        color: #8d908f;
-        font-size: 0.9rem;
-        line-height: 1.25;
+    .field-row input,
+    .field-row textarea {
+        width: 100%;
+        min-height: 40px;
+        padding: 0.55rem 0.7rem;
+        font-size: 0.78rem;
     }
 
-    .extraction div.ready strong {
-        color: #fffdf5;
+    .field-row textarea {
+        min-height: 76px;
+        resize: vertical;
+        line-height: 1.5;
     }
 
-    .extraction div.ready::before {
-        position: absolute;
-        width: 3px;
-        height: 34px;
-        margin-inline-start: -1rem;
-        background: #ff6b35;
-        content: "";
+    .empty-state {
+        display: grid;
+        min-height: 285px;
+        flex: 1;
+        place-content: center;
+        justify-items: center;
+        gap: 0.65rem;
+        color: var(--muted-foreground);
     }
 
-    .reminder-button {
-        min-height: 46px;
-        justify-content: center;
-        gap: 0.5rem;
-        margin-top: 1.2rem;
-        border: 0;
-        border-radius: 6px;
-        background: #ff6b35;
-        padding: 0.65rem 0.8rem;
-        color: #2f281d;
-        font-weight: 700;
-    }
-
-    .reminder-button:hover:not(:disabled) {
-        background: #ff8257;
+    .empty-state p {
+        font-size: 0.78rem;
     }
 
     @media (max-width: 720px) {
-        .paper-body {
-            grid-template-columns: 1fr;
-        }
-
-        .document-input {
-            border-inline-end: 0;
-            border-bottom: 1px solid #d9c590;
-        }
-    }
-
-    @media (max-width: 460px) {
-        header {
-            align-items: stretch;
+        .app-header {
+            align-items: flex-start;
             flex-direction: column;
         }
 
-        .scan-button {
+        .header-actions {
+            width: 100%;
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .app-frame :global(.primary-action),
+        .app-frame :global(.secondary-action) {
+            width: 100%;
             justify-content: center;
         }
 
-        .document-input,
-        .extraction {
-            padding: 1rem;
+        .workspace {
+            grid-template-columns: minmax(0, 1fr);
         }
 
-        .document-input textarea {
-            min-height: 240px;
+        .document-pane {
+            border-inline-end: 0;
+            border-bottom: 1px solid var(--border);
         }
 
-        .extraction > div {
-            grid-template-columns: 74px minmax(0, 1fr);
+        .document-pane > textarea {
+            min-height: 220px;
+        }
+
+        .field-list {
+            min-height: 280px;
+        }
+    }
+
+    @media (max-width: 430px) {
+        .header-actions span {
+            display: none;
+        }
+
+        .header-actions {
+            grid-template-columns: repeat(3, 40px);
+            justify-content: start;
+        }
+
+        .app-frame :global(.primary-action),
+        .app-frame :global(.secondary-action) {
+            width: 40px;
+            padding-inline: 0;
         }
     }
 </style>

@@ -1,11 +1,8 @@
 <script lang="ts">
-    // Dashboard page (homepage)
+    import PortfolioPage from "./portfolio/+page.svelte";
+    import type { PageData } from "./$types";
+
+    let { data }: { data: PageData } = $props();
 </script>
 
-<svelte:head>
-    <title>Dashboard</title>
-</svelte:head>
-
-<div>
-    <!-- Add your dashboard content here -->
-</div>
+<PortfolioPage {data} />

@@ -1,681 +1,887 @@
 <script lang="ts">
+    import { browser } from "$app/environment";
+    import { Button } from "$lib/components/ui/button";
     import {
         Check,
-        Download,
-        Lightbulb,
-        Pause,
-        Play,
+        HardDrive,
+        Plus,
+        Save,
         Search,
-        Tv,
-        Volume2,
+        Trash2,
+        X,
     } from "@lucide/svelte";
 
-    type Room = "living" | "bedroom" | "office";
-    type MediaId = "cairo" | "train" | "kitchen" | "river";
-    type Media = {
-        id: MediaId;
-        year: number;
-        duration: string;
-        ready: boolean;
-        color: string;
-        accent: string;
+    type MediaType = "movie" | "series";
+    type RequestStatus = "ready" | "monitoring" | "queued";
+    type MediaRequest = {
+        id: number;
+        title: string;
+        type: MediaType;
+        quality: string;
+        status: RequestStatus;
+        added: string;
+    };
+    type RequestDraft = {
+        title: string;
+        type: MediaType;
+        quality: string;
+    };
+    type MediaSettings = {
+        autoApprove: boolean;
+        subtitles: boolean;
+        quality: string;
+        cleanupDays: string;
     };
 
+    const STORAGE_KEY = "egouda-tools-media-v1";
+
     let { language = "en" }: { language?: "en" | "ar" } = $props();
-    let query = $state("");
-    let selectedId = $state<MediaId>("cairo");
-    let room = $state<Room>("living");
-    let lights = $state(true);
-    let volume = $state(42);
-    let playing = $state(false);
-    let catalog = $state<Media[]>([
-        {
-            id: "cairo",
-            year: 2026,
-            duration: "1h 48m",
-            ready: true,
-            color: "#f5bf42",
-            accent: "#d94331",
-        },
-        {
-            id: "train",
-            year: 2024,
-            duration: "2h 03m",
-            ready: true,
-            color: "#87b9d7",
-            accent: "#18344c",
-        },
-        {
-            id: "kitchen",
-            year: 2025,
-            duration: "8 × 24m",
-            ready: false,
-            color: "#e48ab1",
-            accent: "#42233a",
-        },
-        {
-            id: "river",
-            year: 2023,
-            duration: "1h 36m",
-            ready: false,
-            color: "#86bc91",
-            accent: "#174b3b",
-        },
-    ]);
+    let activeTab = $state<"requests" | "automation">("requests");
+    let composerOpen = $state(false);
+    let search = $state("");
+    let statusFilter = $state<"all" | RequestStatus>("all");
+    let nextId = 1;
+    let storageReady = $state(false);
+    let saved = $state(false);
+    let saveTimer: ReturnType<typeof setTimeout> | undefined;
+    let requests = $state<MediaRequest[]>([]);
+    let draft = $state<RequestDraft>(newDraft());
+    let settings = $state<MediaSettings>({
+        autoApprove: true,
+        subtitles: true,
+        quality: "1080p",
+        cleanupDays: "30",
+    });
 
     const copyByLanguage = {
         en: {
-            title: "Home control",
-            search: "Search library",
-            rooms: {
-                living: "Living room",
-                bedroom: "Bedroom",
-                office: "Office",
-            },
-            lights: "Lights",
-            volume: "Volume",
-            play: "Play",
-            pause: "Pause",
-            playing: "Now playing",
-            library: "Library",
-            empty: "No results",
-            get: "Add",
-            ready: "Ready",
+            title: "Media",
+            requests: "Requests",
+            automation: "Automation",
+            add: "Add request",
+            cancel: "Cancel",
+            newRequest: "New request",
+            search: "Search requests",
+            allStatuses: "All statuses",
+            name: "Title",
+            type: "Type",
+            quality: "Quality",
+            status: "Status",
             added: "Added",
-            titles: {
-                cairo: "Cairo 2050",
-                train: "Last Train",
-                kitchen: "Space Kitchen",
-                river: "River House",
+            movie: "Movie",
+            series: "Series",
+            submit: "Add to queue",
+            remove: "Remove",
+            empty: "No matching requests",
+            statuses: {
+                ready: "Ready",
+                monitoring: "Monitoring",
+                queued: "Queued",
             },
+            settingsTitle: "Request defaults",
+            settingsDescription: "Applied to new requests.",
+            autoApprove: "Auto-approve requests",
+            autoApproveHelp: "Send approved titles straight to the queue.",
+            subtitles: "English subtitles",
+            subtitlesHelp: "Prefer releases with matching subtitles.",
+            preferredQuality: "Preferred quality",
+            cleanup: "Delete watched files after",
+            never: "Never",
+            days: "days",
+            save: "Save changes",
+            saved: "Saved",
         },
         ar: {
-            title: "تحكم البيت",
-            search: "دور في المكتبة",
-            rooms: {
-                living: "الصالة",
-                bedroom: "أوضة النوم",
-                office: "المكتب",
+            title: "الميديا",
+            requests: "الطلبات",
+            automation: "الإعدادات",
+            add: "ضيف طلب",
+            cancel: "إلغاء",
+            newRequest: "طلب جديد",
+            search: "بحث في الطلبات",
+            allStatuses: "كل الحالات",
+            name: "الاسم",
+            type: "النوع",
+            quality: "الجودة",
+            status: "الحالة",
+            added: "تاريخ الإضافة",
+            movie: "فيلم",
+            series: "مسلسل",
+            submit: "ضيف للطابور",
+            remove: "امسح",
+            empty: "مفيش طلبات",
+            statuses: {
+                ready: "جاهز",
+                monitoring: "قيد المتابعة",
+                queued: "في الطابور",
             },
-            lights: "النور",
-            volume: "الصوت",
-            play: "تشغيل",
-            pause: "وقف",
-            playing: "شغال دلوقتي",
-            library: "المكتبة",
-            empty: "مفيش نتائج",
-            get: "نزّل",
-            ready: "جاهز",
-            added: "اتضاف",
-            titles: {
-                cairo: "القاهرة 2050",
-                train: "آخر قطر",
-                kitchen: "مطبخ الفضاء",
-                river: "بيت النهر",
-            },
+            settingsTitle: "إعدادات الطلبات",
+            settingsDescription: "بتنطبق على الطلبات الجديدة.",
+            autoApprove: "موافقة تلقائية",
+            autoApproveHelp: "إضافة الطلبات للطابور على طول.",
+            subtitles: "ترجمة إنجليزي",
+            subtitlesHelp: "تفضيل النسخ اللي فيها ترجمة.",
+            preferredQuality: "الجودة المفضلة",
+            cleanup: "حذف بعد المشاهدة:",
+            never: "أبدًا",
+            days: "يوم",
+            save: "احفظ",
+            saved: "اتحفظ",
         },
     } as const;
 
-    const roomKeys = ["living", "bedroom", "office"] as const;
+    const statuses = ["ready", "monitoring", "queued"] as const;
     const copy = $derived(copyByLanguage[language]);
-    const selected = $derived(
-        catalog.find((item) => item.id === selectedId) ?? catalog[0],
-    );
-    const filteredCatalog = $derived.by(() => {
-        const needle = query.trim().toLocaleLowerCase();
-        if (!needle) return catalog;
+    const filteredRequests = $derived.by(() => {
+        const needle = search.trim().toLocaleLowerCase();
 
-        return catalog.filter((item) =>
-            copy.titles[item.id].toLocaleLowerCase().includes(needle),
+        return requests.filter(
+            (request) =>
+                (statusFilter === "all" || request.status === statusFilter) &&
+                (!needle ||
+                    request.title.toLocaleLowerCase().includes(needle)),
         );
     });
 
-    function selectMedia(id: MediaId) {
-        selectedId = id;
-        playing = false;
-    }
+    $effect(() => {
+        if (!browser || storageReady) return;
 
-    function runSelected() {
-        if (!selected.ready) {
-            catalog = catalog.map((item) =>
-                item.id === selectedId ? { ...item, ready: true } : item,
+        try {
+            const savedState = JSON.parse(
+                localStorage.getItem(STORAGE_KEY) ?? "{}",
             );
-            return;
+            if (Array.isArray(savedState.requests)) {
+                requests = savedState.requests.filter(isMediaRequest);
+                nextId =
+                    requests.reduce(
+                        (highest, request) => Math.max(highest, request.id),
+                        0,
+                    ) + 1;
+            }
+            if (isMediaSettings(savedState.settings)) {
+                settings = savedState.settings;
+            }
+        } catch {
+            requests = [];
         }
 
-        playing = !playing;
+        storageReady = true;
+    });
+
+    $effect(() => {
+        const snapshot = JSON.stringify({ requests, settings });
+        if (!browser || !storageReady) return;
+        localStorage.setItem(STORAGE_KEY, snapshot);
+    });
+
+    function isMediaRequest(value: unknown): value is MediaRequest {
+        if (!value || typeof value !== "object") return false;
+        const request = value as Partial<MediaRequest>;
+
+        return (
+            typeof request.id === "number" &&
+            typeof request.title === "string" &&
+            (request.type === "movie" || request.type === "series") &&
+            typeof request.quality === "string" &&
+            statuses.includes(request.status as RequestStatus) &&
+            typeof request.added === "string"
+        );
+    }
+
+    function isMediaSettings(value: unknown): value is MediaSettings {
+        if (!value || typeof value !== "object") return false;
+        const candidate = value as Partial<MediaSettings>;
+
+        return (
+            typeof candidate.autoApprove === "boolean" &&
+            typeof candidate.subtitles === "boolean" &&
+            typeof candidate.quality === "string" &&
+            typeof candidate.cleanupDays === "string"
+        );
+    }
+
+    function currentDate() {
+        return new Date().toISOString().slice(0, 10);
+    }
+
+    function formatDate(value: string) {
+        return new Intl.DateTimeFormat(language === "ar" ? "ar-EG" : "en-CA", {
+            month: "short",
+            day: "numeric",
+            timeZone: "UTC",
+        }).format(new Date(value + "T12:00:00Z"));
+    }
+
+    function newDraft(): RequestDraft {
+        return { title: "", type: "movie", quality: "1080p" };
+    }
+
+    function addRequest(event: SubmitEvent) {
+        event.preventDefault();
+        const title = draft.title.trim();
+        if (!title) return;
+
+        requests = [
+            {
+                id: nextId++,
+                title,
+                type: draft.type,
+                quality: draft.quality,
+                status: "queued",
+                added: currentDate(),
+            },
+            ...requests,
+        ];
+        draft = newDraft();
+        composerOpen = false;
+    }
+
+    function removeRequest(id: number) {
+        requests = requests.filter((request) => request.id !== id);
+    }
+
+    function updateStatus(id: number, status: RequestStatus) {
+        requests = requests.map((request) =>
+            request.id === id ? { ...request, status } : request,
+        );
+    }
+
+    function saveSettings(event: SubmitEvent) {
+        event.preventDefault();
+        saved = true;
+        if (saveTimer) clearTimeout(saveTimer);
+        saveTimer = setTimeout(() => (saved = false), 1800);
     }
 </script>
 
 <section
-    class="home-app"
+    class="app-frame"
     data-app="home-control"
     lang={language}
     dir={language === "ar" ? "rtl" : "ltr"}
     aria-label={copy.title}
 >
-    <header>
-        <div class="app-title">
-            <Tv size={18} />
+    <header class="app-header">
+        <div class="app-identity">
+            <HardDrive size={18} />
             <h3>{copy.title}</h3>
         </div>
-        <label class="search-box">
-            <span class="sr-only">{copy.search}</span>
-            <Search size={16} />
-            <input
-                data-testid="media-search"
-                type="search"
-                bind:value={query}
-                placeholder={copy.search}
-            />
-        </label>
+        {#if activeTab === "requests"}
+            <Button
+                size="sm"
+                class="primary-action"
+                data-testid="media-add"
+                onclick={() => (composerOpen = !composerOpen)}
+            >
+                {#if composerOpen}<X size={15} />{:else}<Plus size={15} />{/if}
+                {composerOpen ? copy.cancel : copy.add}
+            </Button>
+        {/if}
     </header>
 
-    <div class="home-body">
-        <div class="library">
-            <p class="eyebrow">{copy.library}</p>
-            <div class="catalog" aria-live="polite">
-                {#each filteredCatalog as item (item.id)}
-                    <button
-                        type="button"
-                        class="media-card"
-                        class:selected={selectedId === item.id}
-                        aria-pressed={selectedId === item.id}
-                        onclick={() => selectMedia(item.id)}
-                    >
-                        <span
-                            class="poster"
-                            style:--cover={item.color}
-                            style:--accent={item.accent}
-                            aria-hidden="true"
-                        >
-                            <i></i>
-                            <b>{String(item.year).slice(2)}</b>
-                        </span>
-                        <span class="media-copy">
-                            <strong>{copy.titles[item.id]}</strong>
-                            <small dir="ltr">{item.year} · {item.duration}</small>
-                        </span>
-                        {#if item.ready}
-                            <span class="ready-mark" title={copy.ready}>
-                                <Check size={13} />
-                            </span>
-                        {/if}
-                    </button>
-                {:else}
-                    <div class="empty">{copy.empty}</div>
-                {/each}
-            </div>
-        </div>
-
-        <div
-            class="controller"
-            style:--cover={selected.color}
-            style:--accent={selected.accent}
+    <div class="tabs" role="tablist" aria-label={copy.title}>
+        <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "requests"}
+            class:active={activeTab === "requests"}
+            onclick={() => (activeTab = "requests")}
         >
-            <div class="now-playing">
-                <span class="large-poster" aria-hidden="true">
-                    <i></i>
-                    <b>{String(selected.year).slice(2)}</b>
-                </span>
-                <div>
-                    <small>{copy.playing}</small>
-                    <strong>{copy.titles[selected.id]}</strong>
-                    <span dir="ltr">{selected.duration}</span>
-                </div>
-                <i class:live={playing} aria-hidden="true"></i>
-            </div>
-
-            <div class="room-picker" aria-label={copy.title}>
-                {#each roomKeys as roomKey}
-                    <button
-                        type="button"
-                        class:active={room === roomKey}
-                        aria-pressed={room === roomKey}
-                        onclick={() => (room = roomKey)}
-                    >
-                        {copy.rooms[roomKey]}
-                    </button>
-                {/each}
-            </div>
-
-            <div class="device-row">
-                <button
-                    data-testid="lights-toggle"
-                    type="button"
-                    class="light-toggle"
-                    class:active={lights}
-                    aria-pressed={lights}
-                    onclick={() => (lights = !lights)}
-                >
-                    <Lightbulb size={18} />
-                    <span>{copy.lights}</span>
-                    <i></i>
-                </button>
-
-                <label class="volume-control">
-                    <span><Volume2 size={17} /> {copy.volume}</span>
-                    <input
-                        data-testid="volume-slider"
-                        type="range"
-                        min="0"
-                        max="100"
-                        bind:value={volume}
-                    />
-                    <b dir="ltr">{volume}%</b>
-                </label>
-            </div>
-
-            <button
-                data-testid="media-action"
-                type="button"
-                class="play-button"
-                onclick={runSelected}
-            >
-                {#if !selected.ready}
-                    <Download size={18} /> {copy.get}
-                {:else if playing}
-                    <Pause size={18} /> {copy.pause}
-                {:else}
-                    <Play size={18} fill="currentColor" /> {copy.play}
-                {/if}
-            </button>
-        </div>
+            {copy.requests}
+            <span>{requests.length}</span>
+        </button>
+        <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "automation"}
+            class:active={activeTab === "automation"}
+            onclick={() => (activeTab = "automation")}
+        >
+            {copy.automation}
+        </button>
     </div>
+
+    {#if activeTab === "requests"}
+        {#if composerOpen}
+            <form class="composer" onsubmit={addRequest}>
+                <div class="composer-heading">{copy.newRequest}</div>
+                <label class="title-field">
+                    <span>{copy.name}</span>
+                    <input
+                        data-testid="media-title"
+                        bind:value={draft.title}
+                        required
+                    />
+                </label>
+                <label>
+                    <span>{copy.type}</span>
+                    <select bind:value={draft.type}>
+                        <option value="movie">{copy.movie}</option>
+                        <option value="series">{copy.series}</option>
+                    </select>
+                </label>
+                <label>
+                    <span>{copy.quality}</span>
+                    <select bind:value={draft.quality}>
+                        <option value="4K">4K</option>
+                        <option value="1080p">1080p</option>
+                        <option value="720p">720p</option>
+                    </select>
+                </label>
+                <Button
+                    type="submit"
+                    size="sm"
+                    class="primary-action composer-submit"
+                    data-testid="media-submit"
+                    disabled={!draft.title.trim()}
+                >
+                    <Plus size={15} /> {copy.submit}
+                </Button>
+            </form>
+        {/if}
+
+        <div class="table-toolbar">
+            <label class="search-field">
+                <span class="sr-only">{copy.search}</span>
+                <Search size={15} />
+                <input
+                    data-testid="media-search"
+                    type="search"
+                    bind:value={search}
+                    placeholder={copy.search}
+                />
+            </label>
+            <select
+                class="filter-select"
+                aria-label={copy.status}
+                bind:value={statusFilter}
+            >
+                <option value="all">{copy.allStatuses}</option>
+                {#each statuses as status}
+                    <option value={status}>{copy.statuses[status]}</option>
+                {/each}
+            </select>
+        </div>
+
+        <div class="table-scroll">
+            <table>
+                <thead>
+                    <tr>
+                        <th>{copy.name}</th>
+                        <th class="type-column">{copy.type}</th>
+                        <th class="quality-column">{copy.quality}</th>
+                        <th class="status-column">{copy.status}</th>
+                        <th class="added-column">{copy.added}</th>
+                        <th class="action-column">
+                            <span class="sr-only">{copy.remove}</span>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {#each filteredRequests as request (request.id)}
+                        <tr data-testid="media-row">
+                            <td class="title-cell">{request.title}</td>
+                            <td class="type-column">
+                                {request.type === "movie"
+                                    ? copy.movie
+                                    : copy.series}
+                            </td>
+                            <td class="quality-column" dir="ltr">{request.quality}</td>
+                            <td class="status-column">
+                                <select
+                                    class="status-select"
+                                    aria-label={copy.status + " " + request.title}
+                                    value={request.status}
+                                    onchange={(event) =>
+                                        updateStatus(
+                                            request.id,
+                                            (event.currentTarget as HTMLSelectElement)
+                                                .value as RequestStatus,
+                                        )}
+                                >
+                                    {#each statuses as status}
+                                        <option value={status}>
+                                            {copy.statuses[status]}
+                                        </option>
+                                    {/each}
+                                </select>
+                            </td>
+                            <td class="added-column">{formatDate(request.added)}</td>
+                            <td class="action-column">
+                                <Button
+                                    variant="ghost"
+                                    size="icon-sm"
+                                    title={copy.remove}
+                                    aria-label={copy.remove + " " + request.title}
+                                    onclick={() => removeRequest(request.id)}
+                                >
+                                    <Trash2 size={15} />
+                                </Button>
+                            </td>
+                        </tr>
+                    {:else}
+                        <tr>
+                            <td class="empty-state" colspan="6">{copy.empty}</td>
+                        </tr>
+                    {/each}
+                </tbody>
+            </table>
+        </div>
+    {:else}
+        <form class="settings" onsubmit={saveSettings}>
+            <div class="settings-heading">
+                <h4>{copy.settingsTitle}</h4>
+                <p>{copy.settingsDescription}</p>
+            </div>
+
+            <label class="setting-row">
+                <span>
+                    <strong>{copy.autoApprove}</strong>
+                    <small>{copy.autoApproveHelp}</small>
+                </span>
+                <input
+                    data-testid="auto-approve"
+                    class="switch"
+                    type="checkbox"
+                    bind:checked={settings.autoApprove}
+                />
+            </label>
+
+            <label class="setting-row">
+                <span>
+                    <strong>{copy.subtitles}</strong>
+                    <small>{copy.subtitlesHelp}</small>
+                </span>
+                <input
+                    class="switch"
+                    type="checkbox"
+                    bind:checked={settings.subtitles}
+                />
+            </label>
+
+            <label class="setting-row">
+                <span><strong>{copy.preferredQuality}</strong></span>
+                <select bind:value={settings.quality}>
+                    <option value="4K">4K</option>
+                    <option value="1080p">1080p</option>
+                    <option value="720p">720p</option>
+                </select>
+            </label>
+
+            <label class="setting-row">
+                <span><strong>{copy.cleanup}</strong></span>
+                <select bind:value={settings.cleanupDays}>
+                    <option value="never">{copy.never}</option>
+                    <option value="7">7 {copy.days}</option>
+                    <option value="30">30 {copy.days}</option>
+                    <option value="90">90 {copy.days}</option>
+                </select>
+            </label>
+
+            <div class="settings-footer">
+                <Button
+                    type="submit"
+                    size="sm"
+                    class="primary-action"
+                    data-testid="settings-save"
+                >
+                    {#if saved}
+                        <Check size={15} /> {copy.saved}
+                    {:else}
+                        <Save size={15} /> {copy.save}
+                    {/if}
+                </Button>
+            </div>
+        </form>
+    {/if}
 </section>
 
 <style>
-    .home-app {
+    .app-frame {
         min-height: 500px;
         overflow: hidden;
+        border: 1px solid var(--border);
         border-radius: 8px;
-        background: #e9f3f7;
-        color: #102436;
-        box-shadow: 0 6px 0 color-mix(in oklab, #102436 22%, transparent);
+        background: var(--card);
+        color: var(--card-foreground);
+        font-family: ui-sans-serif, system-ui, sans-serif;
     }
 
-    header {
+    .app-frame[dir="rtl"] {
+        font-family: "Cairo", ui-sans-serif, system-ui, sans-serif;
+    }
+
+    .app-header {
         display: flex;
-        min-height: 64px;
+        min-height: 54px;
         align-items: center;
         justify-content: space-between;
         gap: 1rem;
-        border-bottom: 1px solid #bdd2dc;
-        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--border);
+        padding: 0.55rem 0.75rem 0.55rem 1rem;
     }
 
-    .app-title {
-        display: inline-flex;
-        flex: none;
+    .app-identity {
+        display: flex;
         align-items: center;
         gap: 0.55rem;
     }
 
-    h3 {
+    .app-identity h3 {
         margin: 0;
-        font-size: 0.95rem;
+        font-size: 0.9rem;
+        font-weight: 650;
+        letter-spacing: 0;
     }
 
-    button,
-    input {
+    .app-frame :global(.primary-action) {
+        background: #ff6b35;
+        color: #17181d;
+    }
+
+    .app-frame :global(.primary-action:hover) {
+        background: #ff8257;
+    }
+
+    .tabs {
+        display: flex;
+        min-height: 44px;
+        align-items: end;
+        gap: 1.25rem;
+        border-bottom: 1px solid var(--border);
+        padding: 0 1rem;
+    }
+
+    .tabs button {
+        display: inline-flex;
+        height: 44px;
+        align-items: center;
+        gap: 0.45rem;
+        border: 0;
+        border-bottom: 2px solid transparent;
+        background: transparent;
+        padding: 0;
+        color: var(--muted-foreground);
         font: inherit;
-    }
-
-    button {
+        font-size: 0.76rem;
+        font-weight: 550;
         cursor: pointer;
     }
 
-    button:focus-visible,
-    input:focus-visible {
-        outline: 3px solid #ff6b35;
-        outline-offset: 2px;
+    .tabs button:hover {
+        color: var(--foreground);
     }
 
-    .search-box {
-        display: flex;
-        width: min(300px, 55%);
-        min-height: 40px;
-        align-items: center;
-        gap: 0.5rem;
-        border: 1px solid #abc5d1;
-        border-radius: 6px;
-        background: #f8fcfd;
-        padding: 0 0.7rem;
-        color: #4d6a77;
+    .tabs button.active {
+        border-bottom-color: var(--foreground);
+        color: var(--foreground);
     }
 
-    .search-box input {
-        width: 100%;
-        min-width: 0;
-        border: 0;
-        outline: 0;
-        background: transparent;
-        color: #102436;
-        font-size: 0.78rem;
+    .tabs button:focus-visible {
+        outline: 2px solid var(--ring);
+        outline-offset: 3px;
     }
 
-    .search-box input::placeholder {
-        color: #64808c;
-        opacity: 1;
-    }
-
-    .home-body {
-        display: grid;
-        min-height: 436px;
-        grid-template-columns: minmax(280px, 0.9fr) minmax(340px, 1.1fr);
-    }
-
-    .library {
-        padding: 1rem;
-        border-inline-end: 1px solid #bdd2dc;
-    }
-
-    .eyebrow {
-        margin: 0 0 0.7rem;
-        color: #587681;
-        font-size: 0.68rem;
-        font-weight: 700;
-        text-transform: uppercase;
-    }
-
-    .catalog {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 0.65rem;
-    }
-
-    .media-card {
-        position: relative;
-        display: grid;
-        min-width: 0;
-        grid-template-columns: 48px minmax(0, 1fr);
-        align-items: center;
-        gap: 0.65rem;
-        border: 1px solid #c4d6dd;
-        border-radius: 6px;
-        background: #f8fcfd;
-        padding: 0.55rem;
-        color: #102436;
-        text-align: start;
-    }
-
-    .media-card:hover,
-    .media-card.selected {
-        border-color: #102436;
-        box-shadow: 0 3px 0 #102436;
-        transform: translateY(-1px);
-    }
-
-    .poster,
-    .large-poster {
-        position: relative;
-        display: block;
-        overflow: hidden;
-        flex: none;
-        border-radius: 4px;
-        background: var(--cover);
-    }
-
-    .poster {
-        width: 48px;
-        aspect-ratio: 2 / 3;
-    }
-
-    .poster i,
-    .large-poster i {
-        position: absolute;
-        right: -18%;
-        bottom: -5%;
-        width: 78%;
-        aspect-ratio: 1;
-        border-radius: 50%;
-        background: var(--accent);
-    }
-
-    .poster b,
-    .large-poster b {
-        position: absolute;
-        top: 8px;
-        left: 8px;
-        color: var(--accent);
+    .tabs button span {
+        display: inline-grid;
+        min-width: 20px;
+        height: 20px;
+        place-items: center;
+        border-radius: 10px;
+        background: var(--muted);
+        color: var(--muted-foreground);
         font-size: 0.62rem;
     }
 
-    .media-copy {
+    input,
+    select {
+        box-sizing: border-box;
+        border: 1px solid var(--input);
+        border-radius: 6px;
+        background: var(--background);
+        color: var(--foreground);
+        font: inherit;
+        font-size: 0.78rem;
+        outline: none;
+    }
+
+    input:focus-visible,
+    select:focus-visible {
+        border-color: var(--ring);
+        box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 24%, transparent);
+    }
+
+    .composer {
+        display: grid;
+        grid-template-columns: minmax(220px, 1.8fr) minmax(110px, 0.7fr) minmax(110px, 0.7fr) auto;
+        align-items: end;
+        gap: 0.6rem;
+        border-bottom: 1px solid var(--border);
+        background: var(--muted);
+        padding: 0.8rem 1rem;
+    }
+
+    .composer-heading {
+        grid-column: 1 / -1;
+        font-size: 0.78rem;
+        font-weight: 650;
+    }
+
+    .composer label {
+        display: grid;
         min-width: 0;
+        gap: 0.3rem;
     }
 
-    .media-copy strong,
-    .media-copy small {
-        display: block;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
+    .composer label > span {
+        color: var(--muted-foreground);
+        font-size: 0.62rem;
+        font-weight: 550;
     }
 
-    .media-copy strong {
+    .composer input,
+    .composer select {
+        width: 100%;
+        min-width: 0;
+        height: 34px;
+        padding: 0 0.55rem;
+    }
+
+    .composer :global(.composer-submit) {
+        margin-bottom: 1px;
+    }
+
+    .table-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding: 0.75rem 1rem;
+    }
+
+    .search-field {
+        display: flex;
+        width: min(320px, 58%);
+        height: 34px;
+        align-items: center;
+        gap: 0.45rem;
+        border: 1px solid var(--input);
+        border-radius: 6px;
+        background: var(--background);
+        padding: 0 0.6rem;
+        color: var(--muted-foreground);
+    }
+
+    .search-field:focus-within {
+        border-color: var(--ring);
+        box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 24%, transparent);
+    }
+
+    .search-field input {
+        width: 100%;
+        min-width: 0;
+        height: 100%;
+        border: 0;
+        background: transparent;
+        padding: 0;
+        box-shadow: none;
+    }
+
+    .search-field input:focus-visible {
+        box-shadow: none;
+    }
+
+    .filter-select {
+        width: 150px;
+        height: 34px;
+        padding: 0 0.55rem;
+    }
+
+    .table-scroll {
+        overflow-x: auto;
+        border-top: 1px solid var(--border);
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
         font-size: 0.76rem;
     }
 
-    .media-copy small {
-        margin-top: 0.25rem;
-        color: #607986;
-        font-size: 0.62rem;
-    }
-
-    .ready-mark {
-        position: absolute;
-        top: 0.35rem;
-        right: 0.35rem;
-        display: grid;
-        width: 20px;
-        height: 20px;
-        place-items: center;
-        border-radius: 50%;
-        background: #dff3e4;
-        color: #26673b;
-    }
-
-    [dir="rtl"] .ready-mark {
-        right: auto;
-        left: 0.35rem;
-    }
-
-    .empty {
-        display: grid;
-        min-height: 180px;
-        grid-column: 1 / -1;
-        place-items: center;
-        border: 1px dashed #abc5d1;
-        color: #587681;
-        font-size: 0.8rem;
-    }
-
-    .controller {
-        display: flex;
-        min-width: 0;
-        flex-direction: column;
-        justify-content: center;
-        gap: 1rem;
-        padding: clamp(1.2rem, 4vw, 2.25rem);
-        background: #f8fcfd;
-    }
-
-    .now-playing {
-        display: grid;
-        grid-template-columns: 76px minmax(0, 1fr) 10px;
-        align-items: center;
-        gap: 1rem;
-    }
-
-    .large-poster {
-        width: 76px;
-        aspect-ratio: 2 / 3;
-        box-shadow: 0 5px 0 color-mix(in oklab, var(--accent) 30%, transparent);
-    }
-
-    .large-poster b {
-        font-size: 0.75rem;
-    }
-
-    .now-playing small,
-    .now-playing strong,
-    .now-playing span {
-        display: block;
-    }
-
-    .now-playing small {
-        color: #607986;
-        font-size: 0.66rem;
-    }
-
-    .now-playing strong {
-        margin-top: 0.2rem;
-        font-size: 1.35rem;
-        line-height: 1.1;
-    }
-
-    .now-playing span {
-        margin-top: 0.35rem;
-        color: #607986;
-        font-size: 0.68rem;
-    }
-
-    .now-playing > i {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: #b6c6cc;
-    }
-
-    .now-playing > i.live {
-        background: #ff6b35;
-        box-shadow: 0 0 0 5px #ffe1d6;
-    }
-
-    .room-picker {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 2px;
-        border: 1px solid #abc5d1;
-        border-radius: 6px;
-        background: #abc5d1;
-        overflow: hidden;
-    }
-
-    .room-picker button {
-        min-height: 40px;
-        border: 0;
-        background: #eef6f8;
-        color: #4d6976;
-        font-size: 0.7rem;
-        font-weight: 700;
-    }
-
-    .room-picker button.active {
-        background: #102436;
-        color: #f8fcfd;
-    }
-
-    .device-row {
-        display: grid;
-        grid-template-columns: minmax(110px, 0.65fr) minmax(160px, 1.35fr);
-        gap: 0.7rem;
-    }
-
-    .light-toggle,
-    .volume-control {
-        min-height: 58px;
-        border: 1px solid #c4d6dd;
-        border-radius: 6px;
-        background: #eef6f8;
-    }
-
-    .light-toggle {
-        display: grid;
-        grid-template-columns: auto 1fr auto;
-        align-items: center;
-        gap: 0.45rem;
-        padding: 0 0.7rem;
-        color: #4d6976;
+    th,
+    td {
+        height: 49px;
+        box-sizing: border-box;
+        border-bottom: 1px solid var(--border);
+        padding: 0.55rem 0.75rem;
         text-align: start;
     }
 
-    .light-toggle i {
-        width: 28px;
-        height: 16px;
-        border-radius: 8px;
-        background: #a8bdc6;
+    th {
+        height: 38px;
+        background: color-mix(in oklab, var(--muted) 55%, transparent);
+        color: var(--muted-foreground);
+        font-size: 0.64rem;
+        font-weight: 600;
     }
 
-    .light-toggle i::after {
-        display: block;
-        width: 12px;
-        height: 12px;
-        margin: 2px;
-        border-radius: 50%;
-        background: #f8fcfd;
-        content: "";
-        transition: transform 120ms ease-out;
+    tbody tr:hover {
+        background: color-mix(in oklab, var(--muted) 52%, transparent);
     }
 
-    .light-toggle.active {
-        color: #7b5300;
+    tbody tr:last-child td {
+        border-bottom: 0;
     }
 
-    .light-toggle.active i {
-        background: #f0b630;
+    .title-cell {
+        font-weight: 600;
     }
 
-    .light-toggle.active i::after {
-        transform: translateX(12px);
+    .type-column {
+        width: 110px;
+        color: var(--muted-foreground);
     }
 
-    [dir="rtl"] .light-toggle.active i::after {
-        transform: translateX(-12px);
+    .quality-column {
+        width: 100px;
+        color: var(--muted-foreground);
     }
 
-    .volume-control {
+    .status-column {
+        width: 130px;
+    }
+
+    .status-select {
+        width: 100%;
+        height: 30px;
+        padding: 0 0.45rem;
+        font-size: 0.7rem;
+    }
+
+    .added-column {
+        width: 100px;
+        color: var(--muted-foreground);
+        white-space: nowrap;
+    }
+
+    .action-column {
+        width: 48px;
+        padding-inline: 0.4rem;
+        text-align: center;
+    }
+
+    .empty-state {
+        height: 180px;
+        color: var(--muted-foreground);
+        text-align: center;
+    }
+
+    .settings {
+        width: min(700px, 100%);
+        padding: 1.35rem 1rem;
+    }
+
+    .settings-heading {
+        padding-bottom: 1rem;
+    }
+
+    .settings-heading h4 {
+        margin: 0;
+        font-size: 0.88rem;
+    }
+
+    .settings-heading p {
+        margin: 0.3rem 0 0;
+        color: var(--muted-foreground);
+        font-size: 0.72rem;
+    }
+
+    .setting-row {
         display: grid;
-        grid-template-columns: auto 1fr auto;
+        min-height: 70px;
+        grid-template-columns: minmax(0, 1fr) auto;
         align-items: center;
-        gap: 0.65rem;
-        padding: 0 0.75rem;
-        color: #4d6976;
+        gap: 1.5rem;
+        border-top: 1px solid var(--border);
+    }
+
+    .setting-row > span {
+        min-width: 0;
+    }
+
+    .setting-row strong,
+    .setting-row small {
+        display: block;
+    }
+
+    .setting-row strong {
+        font-size: 0.78rem;
+        font-weight: 600;
+    }
+
+    .setting-row small {
+        margin-top: 0.22rem;
+        color: var(--muted-foreground);
         font-size: 0.68rem;
     }
 
-    .volume-control > span {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.35rem;
+    .setting-row select {
+        width: 150px;
+        height: 34px;
+        padding: 0 0.55rem;
     }
 
-    .volume-control input {
-        min-width: 55px;
-        accent-color: #ff6b35;
-    }
-
-    .volume-control b {
-        color: #102436;
-        font-size: 0.68rem;
-    }
-
-    .play-button {
-        display: inline-flex;
-        min-height: 48px;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
+    .switch {
+        position: relative;
+        width: 34px;
+        height: 20px;
+        appearance: none;
         border: 0;
-        border-radius: 6px;
-        background: #ff6b35;
-        color: #102436;
-        font-weight: 700;
+        border-radius: 10px;
+        background: var(--input);
+        padding: 0;
+        cursor: pointer;
+        transition: background 150ms ease-out;
     }
 
-    .play-button:hover {
-        background: #ff8257;
+    .switch::after {
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: var(--background);
+        content: "";
+        transition: transform 150ms ease-out;
+    }
+
+    .switch:checked {
+        background: #ff6b35;
+    }
+
+    .switch:checked::after {
+        transform: translateX(14px);
+    }
+
+    [dir="rtl"] .switch::after {
+        right: 3px;
+        left: auto;
+    }
+
+    [dir="rtl"] .switch:checked::after {
+        transform: translateX(-14px);
+    }
+
+    .settings-footer {
+        display: flex;
+        justify-content: flex-end;
+        border-top: 1px solid var(--border);
+        padding-top: 1rem;
+    }
+
+    [dir="rtl"] .settings-footer {
+        justify-content: flex-start;
     }
 
     .sr-only {
@@ -688,55 +894,66 @@
         clip-path: inset(50%);
     }
 
-    @media (max-width: 760px) {
-        .home-body {
-            grid-template-columns: 1fr;
+    @media (max-width: 650px) {
+        .composer {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
         }
 
-        .library {
-            border-inline-end: 0;
-            border-bottom: 1px solid #bdd2dc;
+        .composer-heading,
+        .title-field {
+            grid-column: 1 / -1;
+        }
+
+        .composer :global(.composer-submit) {
+            width: 100%;
+        }
+
+        .quality-column,
+        .added-column {
+            display: none;
         }
     }
 
-    @media (max-width: 480px) {
-        header {
+    @media (max-width: 500px) {
+        .app-header {
+            padding: 0.6rem 0.75rem;
+        }
+
+        .table-toolbar {
             align-items: stretch;
             flex-direction: column;
         }
 
-        .search-box {
+        .search-field,
+        .filter-select {
             width: 100%;
         }
 
-        .catalog {
+        .type-column {
+            display: none;
+        }
+
+        .composer {
             grid-template-columns: 1fr;
         }
 
-        .controller {
-            padding: 1rem;
+        .composer-heading,
+        .title-field {
+            grid-column: auto;
         }
 
-        .device-row {
-            grid-template-columns: 1fr;
+        .setting-row {
+            gap: 0.75rem;
         }
 
-        .now-playing {
-            grid-template-columns: 64px minmax(0, 1fr) 8px;
-        }
-
-        .large-poster {
-            width: 64px;
-        }
-
-        .room-picker button {
-            padding-inline: 0.3rem;
-            font-size: 0.64rem;
+        .setting-row select {
+            width: 120px;
         }
     }
 
     @media (prefers-reduced-motion: reduce) {
-        .light-toggle i::after {
+        .switch,
+        .switch::after {
             transition: none;
         }
     }

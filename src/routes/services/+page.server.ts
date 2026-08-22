@@ -1,3 +1,4 @@
+import { dev } from "$app/environment";
 import {
     isServicesLanguage,
     SERVICES_LANGUAGE_MAX_AGE,
@@ -9,11 +10,14 @@ import {
     readServicesOfferConfig,
     readServicesPaidBookingUrl,
 } from "$lib/server/services-offer";
+import { redirect } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 
 const DEFAULT_LANGUAGE: ServicesLanguage = "en";
 
 export const load: PageServerLoad = ({ cookies, url }) => {
+    if (!dev) redirect(302, "/");
+
     const queryLanguage = url.searchParams.get("lang");
     if (isServicesLanguage(queryLanguage)) {
         cookies.set(SERVICES_LANGUAGE_KEY, queryLanguage, {

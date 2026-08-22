@@ -1,9 +1,3 @@
-import { servicesLlmText } from "$lib/server/services-llm-text";
+import { redirect } from "@sveltejs/kit";
 
-export const GET = () =>
-    new Response(servicesLlmText, {
-        headers: {
-            "content-type": "text/plain; charset=utf-8",
-            "cache-control": "public, max-age=3600",
-        },
-    });
+export const GET = () => redirect(308, "/llms.txt");

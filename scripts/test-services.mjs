@@ -36,25 +36,41 @@ try {
     const englishPage = await fetch(`${baseUrl}/services?lang=en`);
     const englishHtml = await englishPage.text();
     assert(englishPage.status === 200, "English services page should load");
-    assert(englishHtml.includes("One workflow. Built in one week."), "English offer copy is missing");
-    assert(englishHtml.includes("SaaSaaS!!"), "SaaSaaS mark is missing");
+    assert(englishHtml.includes("Small software for your actual work."), "English offer copy is missing");
     assert(englishHtml.includes("$250"), "Fixed price is missing");
     assert(englishHtml.includes(paidBookingUrl), "Paid Cal.com booking link is missing");
-    assert(englishHtml.includes('data-app="budget"'), "Budget app is missing");
-    assert(englishHtml.includes('data-app="home-control"'), "Home control app is missing");
-    assert(englishHtml.includes('data-app="document-reader"'), "Document reader app is missing");
-    assert(englishHtml.includes("No private data."), "Question privacy warning is missing");
+    assert(englishHtml.includes('/services/apps/budget'), "Budget link is missing");
+    assert(englishHtml.includes('/services/apps/media'), "Media link is missing");
+    assert(englishHtml.includes('/services/apps/documents'), "Document link is missing");
+    assert(!englishHtml.includes("SaaSaaS!!"), "SaaSaaS copy should stay removed");
+    assert(!englishHtml.includes('data-app="budget"'), "Tools should not be embedded in the services page");
     assert(!englishHtml.includes("synthetic"), "Synthetic-data narration should stay hidden");
     assert(!englishHtml.includes("mock network"), "Mock-network narration should stay hidden");
     assert(!englishHtml.includes("sample document"), "Sample-document narration should stay hidden");
 
+    const tools = [
+        ["budget", 'data-app="budget"', "Paycheck"],
+        ["media", 'data-app="home-control"', "Dune: Part Two"],
+        ["documents", 'data-app="document-reader"', "Renewal notice"],
+    ];
+    for (const [slug, marker, removedSeed] of tools) {
+        const response = await fetch(`${baseUrl}/services/apps/${slug}?lang=en`);
+        const html = await response.text();
+        assert(response.status === 200, `${slug} tool should load`);
+        assert(html.includes(marker), `${slug} tool marker is missing`);
+        assert(!html.includes(removedSeed), `${slug} tool should not contain seeded records`);
+    }
+
+    const unknownTool = await fetch(`${baseUrl}/services/apps/not-a-tool`);
+    assert(unknownTool.status === 404, "Unknown tools should return 404");
+
     const arabicPage = await fetch(`${baseUrl}/services?lang=ar`);
     const arabicHtml = await arabicPage.text();
     assert(arabicPage.status === 200, "Arabic services page should load");
-    assert(arabicHtml.includes("بتتبني في أسبوع"), "Arabic offer copy is missing");
-    assert(arabicHtml.includes("ميزانية الشهر"), "Arabic budget copy is missing");
-    assert(arabicHtml.includes("تحكم البيت"), "Arabic home copy is missing");
-    assert(arabicHtml.includes("اقرأ مستند"), "Arabic document copy is missing");
+    assert(arabicHtml.includes("برنامج صغير معمول لشغلك بجد"), "Arabic offer copy is missing");
+    assert(arabicHtml.includes("الميزانية"), "Arabic budget copy is missing");
+    assert(arabicHtml.includes("طلبات الميديا"), "Arabic media copy is missing");
+    assert(arabicHtml.includes("قارئ المستندات"), "Arabic document copy is missing");
 
     const question = await postJson(`${baseUrl}/api/services-question`, {
         question: "Can this work with my spreadsheets?",

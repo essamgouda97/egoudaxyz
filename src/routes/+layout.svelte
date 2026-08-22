@@ -26,7 +26,7 @@
 
     let posts: BlogItem[] = $state([]);
     const hasInlineReadingControls = $derived(
-        page.url.pathname === "/" || page.url.pathname === "/services",
+        page.url.pathname.startsWith("/services"),
     );
 
     async function loadBlogPosts() {
@@ -167,25 +167,11 @@
                         <NavigationMenu.Link>
                             {#snippet child()}
                                 <a
-                                    href="/portfolio"
+                                    href="/"
                                     data-sveltekit-preload-data="hover"
                                     class={navigationMenuTriggerStyle()}
                                 >
                                     Portfolio
-                                </a>
-                            {/snippet}
-                        </NavigationMenu.Link>
-                    </NavigationMenu.Item>
-
-                    <NavigationMenu.Item>
-                        <NavigationMenu.Link>
-                            {#snippet child()}
-                                <a
-                                    href="/services"
-                                    data-sveltekit-preload-data="hover"
-                                    class={navigationMenuTriggerStyle()}
-                                >
-                                    Services
                                 </a>
                             {/snippet}
                         </NavigationMenu.Link>

@@ -12,9 +12,8 @@ Blog posts are available as structured JSON for programmatic access.
 
 ## Pages
 
-- [Home](https://egouda.xyz/)
+- [Portfolio](https://egouda.xyz/)
 - [Blog](https://egouda.xyz/blog)
-- [Portfolio](https://egouda.xyz/portfolio)
 
 ## Sitemap
 

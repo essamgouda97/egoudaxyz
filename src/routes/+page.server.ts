@@ -1,6 +1,5 @@
-import { redirect } from "@sveltejs/kit";
+import { readPortfolioLayout } from "$lib/server/portfolio-layout";
 import type { PageServerLoad } from "./$types";
 
-export const load: PageServerLoad = ({ url }) => {
-  redirect(307, `/services${url.search}`);
-};
+export const load = (({ cookies }) =>
+    readPortfolioLayout(cookies)) satisfies PageServerLoad;
